@@ -56,6 +56,8 @@ Clerk is enforced when `SKIP_AUTH` is not `1`. To enable:
 
 ## Root Directories (for GitHub deploy)
 
-When connecting a GitHub repo, set in each service's Settings:
+**Required** – set in each service's Settings → Source → Root Directory:
 - **Backend**: Root directory = `backend`
 - **Frontend**: Root directory = `frontend`
+
+If the frontend Root Directory is wrong (e.g. repo root), the build fails with `No workspaces found: --workspace=frontend`.
