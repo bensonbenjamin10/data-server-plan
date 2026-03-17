@@ -3,9 +3,13 @@ import { useEffect, useCallback } from "react";
 export function useKeyboardShortcuts(handlers: {
   onUpload?: () => void;
   onSearch?: () => void;
+  onEscape?: () => void;
 }) {
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        handlers.onEscape?.();
+      }
       if (e.ctrlKey || e.metaKey) {
         if (e.key === "u") {
           e.preventDefault();
@@ -17,7 +21,7 @@ export function useKeyboardShortcuts(handlers: {
         }
       }
     },
-    [handlers.onUpload, handlers.onSearch]
+    [handlers.onUpload, handlers.onSearch, handlers.onEscape]
   );
 
   useEffect(() => {

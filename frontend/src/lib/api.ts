@@ -1,4 +1,4 @@
-const API_BASE = "/api";
+const API_BASE = import.meta.env.VITE_API_URL || "/api";
 
 export function createApi(getToken: () => Promise<string | null>) {
   async function fetchWithAuth(
@@ -109,6 +109,15 @@ export function createApi(getToken: () => Promise<string | null>) {
     return res.json() as Promise<{ url: string; name: string }>;
   },
 
+  async updateFile(fileId: string, data: { name?: string; folderId?: string | null }) {
+    const res = await fetchWithAuth(`/files/${fileId}`, {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) throw new Error(await res.text());
+    return res.json();
+  },
+
   async deleteFile(fileId: string) {
     const res = await fetchWithAuth(`/files/${fileId}`, { method: "DELETE" });
     if (!res.ok) throw new Error(await res.text());
@@ -119,6 +128,12 @@ export function createApi(getToken: () => Promise<string | null>) {
     const res = await fetchWithAuth(`/folders${qs}`);
     if (!res.ok) throw new Error(await res.text());
     return res.json() as Promise<{ folders: FolderRecord[] }>;
+  },
+
+  async getFolderTree() {
+    const res = await fetchWithAuth("/folders/tree");
+    if (!res.ok) throw new Error(await res.text());
+    return res.json() as Promise<{ tree: FolderTreeNode[] }>;
   },
 
   async getFolder(id: string) {
@@ -134,6 +149,20 @@ export function createApi(getToken: () => Promise<string | null>) {
     });
     if (!res.ok) throw new Error(await res.text());
     return res.json();
+  },
+
+  async updateFolder(folderId: string, data: { name?: string; parentId?: string | null }) {
+    const res = await fetchWithAuth(`/folders/${folderId}`, {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) throw new Error(await res.text());
+    return res.json();
+  },
+
+  async deleteFolder(folderId: string) {
+    const res = await fetchWithAuth(`/folders/${folderId}`, { method: "DELETE" });
+    if (!res.ok) throw new Error(await res.text());
   },
 };
 }
@@ -155,4 +184,12 @@ export interface FolderRecord {
   name: string;
   path: string;
   parentId: string | null;
+}
+
+export interface FolderTreeNode {
+  id: string;
+  name: string;
+  path: string;
+  parentId: string | null;
+  children: FolderTreeNode[];
 }

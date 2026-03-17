@@ -1,0 +1,14 @@
+[
+  {
+    "AllowedOrigins": [
+      "http://localhost:5173",
+      "http://localhost:3000",
+      "https://frontend-production-f322.up.railway.app",
+      "https://data.finjoe.app"
+    ],
+    "AllowedMethods": ["GET", "PUT", "POST", "HEAD"],
+    "AllowedHeaders": ["*"],
+    "ExposeHeaders": ["ETag"],
+    "MaxAgeSeconds": 3600
+  }
+]

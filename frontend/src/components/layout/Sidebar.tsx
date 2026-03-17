@@ -1,5 +1,6 @@
-import { NavLink } from "react-router-dom";
+import { NavLink, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
+import { FolderTree } from "./FolderTree";
 
 const navItems = [
   { to: "/", label: "Dashboard" },
@@ -8,6 +9,9 @@ const navItems = [
 ];
 
 export function Sidebar() {
+  const location = useLocation();
+  const isFilesSection = location.pathname.startsWith("/files");
+
   return (
     <aside className="w-64 bg-surface border-r border-neutral/60 flex flex-col shrink-0">
       <div className="p-6 border-b border-neutral/60">
@@ -15,7 +19,7 @@ export function Sidebar() {
           Org Storage
         </h2>
       </div>
-      <nav className="p-4 flex flex-col gap-1">
+      <nav className="p-4 flex flex-col gap-1 flex-1 overflow-hidden min-h-0">
         {navItems.map((item) => (
           <NavLink
             key={item.to}
@@ -42,6 +46,11 @@ export function Sidebar() {
             )}
           </NavLink>
         ))}
+        {isFilesSection && (
+          <div className="mt-2 overflow-auto flex-1 min-h-0">
+            <FolderTree />
+          </div>
+        )}
       </nav>
     </aside>
   );

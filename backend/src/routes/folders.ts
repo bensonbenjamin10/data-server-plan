@@ -15,8 +15,48 @@ const createFolderSchema = z.object({
   parentId: z.string().optional().nullable(),
 });
 
+const updateFolderSchema = z.object({
+  name: z.string().min(1).optional(),
+  parentId: z.string().nullable().optional(),
+});
+
 foldersRoutes.use(clerkMiddlewareWithDevBypass());
 foldersRoutes.use(requireAuthWithDevBypass());
+
+foldersRoutes.get("/tree", requireDownload, async (req, res) => {
+  try {
+    const orgId = getOrgId(req);
+    if (!orgId) {
+      res.status(403).json({ error: "Organization context required" });
+      return;
+    }
+    const all = await prisma.folder.findMany({
+      where: { orgId },
+      orderBy: { name: "asc" },
+    });
+    const byParent = new Map<string | null, typeof all>();
+    byParent.set(null, []);
+    for (const f of all) {
+      const key = f.parentId ?? null;
+      if (!byParent.has(key)) byParent.set(key, []);
+      byParent.get(key)!.push(f);
+    }
+    function buildTree(pid: string | null): Array<{ id: string; name: string; path: string; parentId: string | null; children: ReturnType<typeof buildTree> }> {
+      return (byParent.get(pid) ?? []).map((f) => ({
+        id: f.id,
+        name: f.name,
+        path: f.path,
+        parentId: f.parentId,
+        children: buildTree(f.id),
+      }));
+    }
+    const tree = buildTree(null);
+    res.json({ tree });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to list folder tree" });
+  }
+});
 
 foldersRoutes.get("/", requireDownload, async (req, res) => {
   try {
@@ -97,5 +137,77 @@ foldersRoutes.post("/", requireUpload, async (req, res) => {
     }
     console.error(err);
     res.status(500).json({ error: "Failed to create folder" });
+  }
+});
+
+foldersRoutes.patch("/:id", requireUpload, async (req, res) => {
+  try {
+    const orgId = getOrgId(req);
+    if (!orgId) {
+      res.status(403).json({ error: "Organization context required" });
+      return;
+    }
+    const { id } = req.params;
+    const body = updateFolderSchema.parse(req.body);
+    const folder = await prisma.folder.findFirst({
+      where: { id, orgId },
+    });
+    if (!folder) {
+      res.status(404).json({ error: "Folder not found" });
+      return;
+    }
+    const newName = body.name ?? folder.name;
+    const newParentId = body.parentId !== undefined ? body.parentId : folder.parentId;
+    let newPath = newName;
+    if (newParentId) {
+      const parent = await prisma.folder.findFirst({
+        where: { id: newParentId, orgId },
+      });
+      if (!parent) {
+        res.status(404).json({ error: "Parent folder not found" });
+        return;
+      }
+      newPath = `${parent.path}/${newName}`;
+    }
+    const data: { name?: string; parentId?: string | null; path: string } = {
+      path: newPath,
+    };
+    if (body.name !== undefined) data.name = body.name;
+    if (body.parentId !== undefined) data.parentId = body.parentId;
+    const updated = await prisma.folder.update({
+      where: { id },
+      data,
+    });
+    res.json(updated);
+  } catch (err) {
+    if (err instanceof z.ZodError) {
+      res.status(400).json({ error: err.errors });
+      return;
+    }
+    console.error(err);
+    res.status(500).json({ error: "Failed to update folder" });
+  }
+});
+
+foldersRoutes.delete("/:id", requireUpload, async (req, res) => {
+  try {
+    const orgId = getOrgId(req);
+    if (!orgId) {
+      res.status(403).json({ error: "Organization context required" });
+      return;
+    }
+    const { id } = req.params;
+    const folder = await prisma.folder.findFirst({
+      where: { id, orgId },
+    });
+    if (!folder) {
+      res.status(404).json({ error: "Folder not found" });
+      return;
+    }
+    await prisma.folder.delete({ where: { id } });
+    res.status(204).send();
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to delete folder" });
   }
 });

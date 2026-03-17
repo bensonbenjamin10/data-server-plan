@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { useApi } from "@/lib/api-context";
 import { usePresignedDownload } from "@/hooks/usePresignedDownload";
 import { useResumableUpload } from "@/hooks/useResumableUpload";
@@ -12,6 +12,11 @@ import { UploadZone } from "@/components/upload/UploadZone";
 import { UploadProgress } from "@/components/upload/UploadProgress";
 import { FileList } from "@/components/files/FileList";
 import { FileGrid } from "@/components/files/FileGrid";
+import { BulkActionBar } from "@/components/files/BulkActionBar";
+import { ConfirmModal, PromptModal } from "@/components/ui/Modal";
+import { MoveModal } from "@/components/ui/MoveModal";
+import { ContextMenu } from "@/components/ui/ContextMenu";
+import type { FileRecord } from "@/lib/api";
 
 export function Files() {
   const { folderId } = useParams();
@@ -22,11 +27,30 @@ export function Files() {
   const queryClient = useQueryClient();
 
   const [viewMode, setViewMode] = useState<"list" | "grid">("list");
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [sortBy, setSortBy] = useState<"name" | "date" | "size">("name");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+  const [fileToDelete, setFileToDelete] = useState<FileRecord | null>(null);
+  const [folderToDelete, setFolderToDelete] = useState<{ id: string; name: string } | null>(null);
+  const [fileToRename, setFileToRename] = useState<FileRecord | null>(null);
+  const [folderToRename, setFolderToRename] = useState<{ id: string; name: string } | null>(null);
+  const [fileToMove, setFileToMove] = useState<FileRecord | null>(null);
+  const [folderToMove, setFolderToMove] = useState<{ id: string; name: string } | null>(null);
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
+  const [bulkMoveOpen, setBulkMoveOpen] = useState(false);
+  const [createFolderOpen, setCreateFolderOpen] = useState(false);
+  const [contextMenu, setContextMenu] = useState<{
+    x: number;
+    y: number;
+    item: { id: string; name: string; isFolder: boolean };
+    file?: FileRecord;
+  } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const lastSelectedIdRef = useRef<string | null>(null);
 
   useKeyboardShortcuts({
     onUpload: () => fileInputRef.current?.click(),
+    onEscape: () => setSelectedIds(new Set()),
   });
 
   const { data: filesData } = useQuery({
@@ -45,6 +69,12 @@ export function Files() {
     enabled: !!folderId,
   });
 
+  const { data: folderTreeData } = useQuery({
+    queryKey: ["folders", "tree"],
+    queryFn: () => api.getFolderTree(),
+  });
+  const folderTree = folderTreeData?.tree ?? [];
+
   const {
     upload,
     pause,
@@ -56,10 +86,96 @@ export function Files() {
   const files = filesData?.files ?? [];
   const folders = foldersData?.folders ?? [];
 
+  const sortedFolders = [...folders].sort((a, b) => {
+    const cmp = a.name.localeCompare(b.name, undefined, { sensitivity: "base" });
+    return sortDir === "asc" ? cmp : -cmp;
+  });
+  const sortedFiles = [...files].sort((a, b) => {
+    if (sortBy === "name") {
+      const cmp = a.name.localeCompare(b.name, undefined, { sensitivity: "base" });
+      return sortDir === "asc" ? cmp : -cmp;
+    }
+    if (sortBy === "date") {
+      const cmp = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+      return sortDir === "asc" ? cmp : -cmp;
+    }
+    const cmp = a.size - b.size;
+    return sortDir === "asc" ? cmp : -cmp;
+  });
+
   const invalidate = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: ["files"] });
     queryClient.invalidateQueries({ queryKey: ["folders"] });
   }, [queryClient]);
+
+  const orderedIds = [...sortedFolders.map((f) => f.id), ...sortedFiles.map((f) => f.id)];
+
+  const handleSelect = useCallback(
+    (id: string, _isFolder: boolean, modifiers?: { shift?: boolean; ctrl?: boolean }) => {
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        if (modifiers?.ctrl) {
+          if (next.has(id)) next.delete(id);
+          else next.add(id);
+          lastSelectedIdRef.current = id;
+          return next;
+        }
+        if (modifiers?.shift && lastSelectedIdRef.current) {
+          const lastIdx = orderedIds.indexOf(lastSelectedIdRef.current);
+          const idx = orderedIds.indexOf(id);
+          const [lo, hi] = lastIdx < idx ? [lastIdx, idx] : [idx, lastIdx];
+          for (let i = lo; i <= hi; i++) next.add(orderedIds[i]);
+          return next;
+        }
+        lastSelectedIdRef.current = id;
+        return new Set([id]);
+      });
+    },
+    [orderedIds]
+  );
+
+  const handleSelectAll = useCallback((checked: boolean) => {
+    setSelectedIds(checked ? new Set(orderedIds) : new Set());
+  }, [orderedIds]);
+
+  const selectedFiles = sortedFiles.filter((f) => selectedIds.has(f.id));
+  const selectedFolders = sortedFolders.filter((f) => selectedIds.has(f.id));
+
+  const handleBulkDownload = useCallback(async () => {
+    for (const file of selectedFiles) {
+      try {
+        await download(file.id, file.name);
+      } catch {
+        showToast(`Failed to download ${file.name}`, "error");
+      }
+    }
+    if (selectedFiles.length > 0) showToast(`${selectedFiles.length} file(s) download started`, "success");
+  }, [download, selectedFiles, showToast]);
+
+  const handleBulkDeleteClick = useCallback(() => {
+    setBulkDeleteOpen(true);
+  }, []);
+
+  const handleBulkDeleteConfirm = useCallback(async () => {
+    for (const file of selectedFiles) {
+      try {
+        await api.deleteFile(file.id);
+      } catch {
+        showToast(`Failed to delete ${file.name}`, "error");
+      }
+    }
+    for (const folder of selectedFolders) {
+      try {
+        await api.deleteFolder(folder.id);
+      } catch {
+        showToast(`Failed to delete ${folder.name}`, "error");
+      }
+    }
+    invalidate();
+    setSelectedIds(new Set());
+    setBulkDeleteOpen(false);
+    showToast(`${selectedFiles.length + selectedFolders.length} item(s) deleted`, "success");
+  }, [api, selectedFiles, selectedFolders, invalidate, showToast]);
 
   const handleFilesSelected = useCallback(
     async (fileList: File[]) => {
@@ -91,19 +207,21 @@ export function Files() {
     [download, showToast]
   );
 
-  const handleDelete = useCallback(
-    async (file: { id: string; name: string }) => {
-      if (!confirm(`Delete "${file.name}"?`)) return;
-      try {
-        await api.deleteFile(file.id);
-        queryClient.invalidateQueries({ queryKey: ["files"] });
-        showToast("File deleted", "success");
-      } catch {
-        showToast("Delete failed", "error");
-      }
-    },
-    [api, queryClient, showToast]
-  );
+  const handleDelete = useCallback((file: FileRecord) => {
+    setFileToDelete(file);
+  }, []);
+
+  const handleConfirmDelete = useCallback(async () => {
+    if (!fileToDelete) return;
+    try {
+      await api.deleteFile(fileToDelete.id);
+      queryClient.invalidateQueries({ queryKey: ["files"] });
+      showToast("File deleted", "success");
+      setFileToDelete(null);
+    } catch {
+      showToast("Delete failed", "error");
+    }
+  }, [api, fileToDelete, queryClient, showToast]);
 
   const handleDoubleClick = useCallback(
     (id: string, isFolder: boolean) => {
@@ -114,17 +232,158 @@ export function Files() {
     [navigate]
   );
 
-  const handleCreateFolder = useCallback(async () => {
-    const name = prompt("Folder name:");
-    if (!name?.trim()) return;
+  const handleCreateFolderClick = useCallback(() => {
+    setCreateFolderOpen(true);
+  }, []);
+
+  const handleCreateFolderConfirm = useCallback(
+    async (name: string) => {
+      try {
+        await api.createFolder(name.trim(), folderId || null);
+        invalidate();
+        showToast("Folder created", "success");
+      } catch {
+        showToast("Failed to create folder", "error");
+      }
+    },
+    [api, folderId, invalidate, showToast]
+  );
+
+  const handleRenameFile = useCallback((file: FileRecord) => setFileToRename(file), []);
+  const handleRenameFileConfirm = useCallback(
+    async (name: string) => {
+      if (!fileToRename) return;
+      try {
+        await api.updateFile(fileToRename.id, { name: name.trim() });
+        invalidate();
+        showToast("File renamed", "success");
+        setFileToRename(null);
+      } catch {
+        showToast("Failed to rename file", "error");
+      }
+    },
+    [api, fileToRename, invalidate, showToast]
+  );
+
+  const handleRenameFolder = useCallback((folder: { id: string; name: string }) => setFolderToRename(folder), []);
+  const handleRenameFolderConfirm = useCallback(
+    async (name: string) => {
+      if (!folderToRename) return;
+      try {
+        await api.updateFolder(folderToRename.id, { name: name.trim() });
+        invalidate();
+        showToast("Folder renamed", "success");
+        setFolderToRename(null);
+      } catch {
+        showToast("Failed to rename folder", "error");
+      }
+    },
+    [api, folderToRename, invalidate, showToast]
+  );
+
+  const handleMoveFile = useCallback((file: FileRecord) => setFileToMove(file), []);
+  const handleMoveFileConfirm = useCallback(
+    async (targetFolderId: string | null) => {
+      if (!fileToMove) return;
+      try {
+        await api.updateFile(fileToMove.id, { folderId: targetFolderId });
+        invalidate();
+        showToast("File moved", "success");
+        setFileToMove(null);
+      } catch {
+        showToast("Failed to move file", "error");
+      }
+    },
+    [api, fileToMove, invalidate, showToast]
+  );
+
+  const handleMoveFolder = useCallback((folder: { id: string; name: string }) => setFolderToMove(folder), []);
+  const handleMoveFolderConfirm = useCallback(
+    async (targetParentId: string | null) => {
+      if (!folderToMove) return;
+      try {
+        await api.updateFolder(folderToMove.id, { parentId: targetParentId });
+        invalidate();
+        showToast("Folder moved", "success");
+        setFolderToMove(null);
+      } catch {
+        showToast("Failed to move folder", "error");
+      }
+    },
+    [api, folderToMove, invalidate, showToast]
+  );
+
+  const handleDeleteFolder = useCallback((folder: { id: string; name: string }) => setFolderToDelete(folder), []);
+  const handleDeleteFolderConfirm = useCallback(async () => {
+    if (!folderToDelete) return;
     try {
-      await api.createFolder(name.trim(), folderId || null);
+      await api.deleteFolder(folderToDelete.id);
       invalidate();
-      showToast("Folder created", "success");
+      showToast("Folder deleted", "success");
+      setFolderToDelete(null);
     } catch {
-      showToast("Failed to create folder", "error");
+      showToast("Failed to delete folder", "error");
     }
-  }, [api, folderId, invalidate, showToast]);
+  }, [api, folderToDelete, invalidate, showToast]);
+
+  const handleContextMenu = useCallback(
+    (e: React.MouseEvent, item: { id: string; name: string; isFolder: boolean }, file?: FileRecord) => {
+      e.preventDefault();
+      setContextMenu({ x: e.clientX, y: e.clientY, item, file });
+    },
+    []
+  );
+
+  const handleBulkMoveClick = useCallback(() => setBulkMoveOpen(true), []);
+  const handleDrop = useCallback(
+    async (item: { id: string; isFolder: boolean }, targetFolderId: string | null) => {
+      if (item.isFolder) {
+        if (item.id === targetFolderId) return;
+        try {
+          await api.updateFolder(item.id, { parentId: targetFolderId });
+          invalidate();
+          showToast("Folder moved", "success");
+        } catch {
+          showToast("Failed to move folder", "error");
+        }
+      } else {
+        try {
+          await api.updateFile(item.id, { folderId: targetFolderId });
+          invalidate();
+          showToast("File moved", "success");
+        } catch {
+          showToast("Failed to move file", "error");
+        }
+      }
+    },
+    [api, invalidate, showToast]
+  );
+
+  const handleBulkMoveConfirm = useCallback(
+    async (targetFolderId: string | null) => {
+      for (const file of selectedFiles) {
+        try {
+          await api.updateFile(file.id, { folderId: targetFolderId });
+        } catch {
+          showToast(`Failed to move ${file.name}`, "error");
+        }
+      }
+      if (selectedFolders.length > 0) {
+        for (const folder of selectedFolders) {
+          try {
+            await api.updateFolder(folder.id, { parentId: targetFolderId });
+          } catch {
+            showToast(`Failed to move ${folder.name}`, "error");
+          }
+        }
+      }
+      invalidate();
+      setSelectedIds(new Set());
+      setBulkMoveOpen(false);
+      showToast("Items moved", "success");
+    },
+    [api, selectedFiles, selectedFolders, invalidate, showToast]
+  );
 
   const breadcrumbItems = [
     { label: "Files", path: "/files" },
@@ -146,13 +405,29 @@ export function Files() {
           <div className="flex items-center gap-4">
             <Breadcrumbs items={breadcrumbItems} />
             <button
-              onClick={handleCreateFolder}
+              onClick={handleCreateFolderClick}
               className="text-sm px-3 py-1.5 rounded-lg bg-accent text-white hover:bg-accent-hover font-medium"
             >
               New folder
             </button>
           </div>
           <div className="flex items-center gap-2">
+            <select
+              value={`${sortBy}-${sortDir}`}
+              onChange={(e) => {
+                const [s, d] = e.target.value.split("-") as ["name" | "date" | "size", "asc" | "desc"];
+                setSortBy(s);
+                setSortDir(d);
+              }}
+              className="text-sm px-3 py-1.5 rounded-lg border border-neutral/60 bg-surface text-text"
+            >
+              <option value="name-asc">Name A–Z</option>
+              <option value="name-desc">Name Z–A</option>
+              <option value="date-desc">Date (newest)</option>
+              <option value="date-asc">Date (oldest)</option>
+              <option value="size-desc">Size (largest)</option>
+              <option value="size-asc">Size (smallest)</option>
+            </select>
             <button
               onClick={() => setViewMode("list")}
               className={`p-2 rounded ${viewMode === "list" ? "bg-accent/20 text-accent" : "text-text-muted hover:bg-neutral/30"}`}
@@ -199,6 +474,20 @@ export function Files() {
           />
         )}
 
+        <AnimatePresence>
+          {selectedIds.size > 0 && (
+            <BulkActionBar
+            selectedCount={selectedIds.size}
+            selectedFiles={selectedFiles}
+            selectedFolders={selectedFolders}
+            onClearSelection={() => setSelectedIds(new Set())}
+            onBulkDelete={handleBulkDeleteClick}
+            onBulkDownload={handleBulkDownload}
+            onBulkMove={handleBulkMoveClick}
+            />
+          )}
+        </AnimatePresence>
+
         {files.length === 0 && folders.length === 0 ? (
           <div className="text-center py-16 bg-surface rounded-lg border border-neutral/60">
             <p className="text-4xl mb-4">📂</p>
@@ -210,25 +499,207 @@ export function Files() {
         ) : (
           viewMode === "list" ? (
             <FileList
-              files={files}
-              folders={folders}
-              selectedId={selectedId}
-              onSelect={setSelectedId}
+              files={sortedFiles}
+              folders={sortedFolders}
+              selectedIds={selectedIds}
+              onSelect={handleSelect}
+              onSelectAll={handleSelectAll}
               onDoubleClick={handleDoubleClick}
               onDownload={handleDownload}
               onDelete={handleDelete}
+              onRename={handleRenameFile}
+              onRenameFolder={handleRenameFolder}
+              onMove={handleMoveFile}
+              onMoveFolder={handleMoveFolder}
+              onDeleteFolder={handleDeleteFolder}
+              onDrop={handleDrop}
+              currentFolderId={folderId ?? null}
+              onContextMenu={handleContextMenu}
             />
           ) : (
             <FileGrid
-              files={files}
-              folders={folders}
-              selectedId={selectedId}
-              onSelect={setSelectedId}
+              files={sortedFiles}
+              folders={sortedFolders}
+              selectedIds={selectedIds}
+              onSelect={handleSelect}
               onDoubleClick={handleDoubleClick}
               onDownload={handleDownload}
               onDelete={handleDelete}
+              onRename={handleRenameFile}
+              onRenameFolder={handleRenameFolder}
+              onMove={handleMoveFile}
+              onMoveFolder={handleMoveFolder}
+              onDeleteFolder={handleDeleteFolder}
+              onDrop={handleDrop}
+              currentFolderId={folderId ?? null}
+              onContextMenu={handleContextMenu}
             />
           )
+        )}
+
+        {contextMenu && (
+          <ContextMenu
+            x={contextMenu.x}
+            y={contextMenu.y}
+            isOpen={!!contextMenu}
+            onClose={() => setContextMenu(null)}
+          >
+            {contextMenu.item.isFolder ? (
+              <>
+                <button
+                  onClick={() => {
+                    setFolderToRename({ id: contextMenu.item.id, name: contextMenu.item.name });
+                    setContextMenu(null);
+                  }}
+                  className="w-full px-4 py-2 text-left text-sm hover:bg-neutral/30"
+                >
+                  Rename
+                </button>
+                <button
+                  onClick={() => {
+                    setFolderToMove({ id: contextMenu.item.id, name: contextMenu.item.name });
+                    setContextMenu(null);
+                  }}
+                  className="w-full px-4 py-2 text-left text-sm hover:bg-neutral/30"
+                >
+                  Move
+                </button>
+                <button
+                  onClick={() => {
+                    setFolderToDelete({ id: contextMenu.item.id, name: contextMenu.item.name });
+                    setContextMenu(null);
+                  }}
+                  className="w-full px-4 py-2 text-left text-sm text-error hover:bg-neutral/30"
+                >
+                  Delete
+                </button>
+              </>
+            ) : (
+              contextMenu.file && (
+                <>
+                  <button
+                    onClick={() => {
+                      handleDownload(contextMenu.file!);
+                      setContextMenu(null);
+                    }}
+                    className="w-full px-4 py-2 text-left text-sm hover:bg-neutral/30"
+                  >
+                    Download
+                  </button>
+                  <button
+                    onClick={() => {
+                      setFileToRename(contextMenu.file!);
+                      setContextMenu(null);
+                    }}
+                    className="w-full px-4 py-2 text-left text-sm hover:bg-neutral/30"
+                  >
+                    Rename
+                  </button>
+                  <button
+                    onClick={() => {
+                      setFileToMove(contextMenu.file!);
+                      setContextMenu(null);
+                    }}
+                    className="w-full px-4 py-2 text-left text-sm hover:bg-neutral/30"
+                  >
+                    Move
+                  </button>
+                  <button
+                    onClick={() => {
+                      setFileToDelete(contextMenu.file!);
+                      setContextMenu(null);
+                    }}
+                    className="w-full px-4 py-2 text-left text-sm text-error hover:bg-neutral/30"
+                  >
+                    Delete
+                  </button>
+                </>
+              )
+            )}
+          </ContextMenu>
+        )}
+
+        <ConfirmModal
+          isOpen={!!fileToDelete}
+          onClose={() => setFileToDelete(null)}
+          onConfirm={handleConfirmDelete}
+          title="Delete file"
+          message={fileToDelete ? `Delete "${fileToDelete.name}"? This cannot be undone.` : ""}
+          confirmLabel="Delete"
+          variant="danger"
+        />
+        <ConfirmModal
+          isOpen={bulkDeleteOpen}
+          onClose={() => setBulkDeleteOpen(false)}
+          onConfirm={handleBulkDeleteConfirm}
+          title="Delete selected"
+          message={`Delete ${selectedIds.size} selected item(s)? This cannot be undone.`}
+          confirmLabel="Delete"
+          variant="danger"
+        />
+        <PromptModal
+          isOpen={createFolderOpen}
+          onClose={() => setCreateFolderOpen(false)}
+          onConfirm={handleCreateFolderConfirm}
+          title="New folder"
+          label="Folder name"
+          confirmLabel="Create"
+        />
+        <PromptModal
+          isOpen={!!fileToRename}
+          onClose={() => setFileToRename(null)}
+          onConfirm={handleRenameFileConfirm}
+          title="Rename file"
+          label="File name"
+          defaultValue={fileToRename?.name ?? ""}
+          confirmLabel="Rename"
+        />
+        <PromptModal
+          isOpen={!!folderToRename}
+          onClose={() => setFolderToRename(null)}
+          onConfirm={handleRenameFolderConfirm}
+          title="Rename folder"
+          label="Folder name"
+          defaultValue={folderToRename?.name ?? ""}
+          confirmLabel="Rename"
+        />
+        <ConfirmModal
+          isOpen={!!folderToDelete}
+          onClose={() => setFolderToDelete(null)}
+          onConfirm={handleDeleteFolderConfirm}
+          title="Delete folder"
+          message={folderToDelete ? `Delete "${folderToDelete.name}" and all its contents? This cannot be undone.` : ""}
+          confirmLabel="Delete"
+          variant="danger"
+        />
+        {fileToMove && (
+          <MoveModal
+            isOpen={!!fileToMove}
+            onClose={() => setFileToMove(null)}
+            onConfirm={handleMoveFileConfirm}
+            title="Move file"
+            folderTree={folderTree}
+            excludeFolderId={null}
+          />
+        )}
+        {folderToMove && (
+          <MoveModal
+            isOpen={!!folderToMove}
+            onClose={() => setFolderToMove(null)}
+            onConfirm={handleMoveFolderConfirm}
+            title="Move folder"
+            folderTree={folderTree}
+            excludeFolderId={folderToMove?.id}
+          />
+        )}
+        {bulkMoveOpen && (
+          <MoveModal
+            isOpen={bulkMoveOpen}
+            onClose={() => setBulkMoveOpen(false)}
+            onConfirm={handleBulkMoveConfirm}
+            title="Move selected"
+            folderTree={folderTree}
+          />
         )}
       </motion.div>
     </div>
