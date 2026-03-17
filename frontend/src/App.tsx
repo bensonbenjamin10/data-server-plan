@@ -1,20 +1,24 @@
 import { Routes, Route, Navigate } from "react-router-dom";
-import { SignedIn, SignedOut } from "@clerk/clerk-react";
 import { Layout } from "./components/layout/Layout";
 import { Files } from "./pages/Files";
 import { Dashboard } from "./pages/Dashboard";
 import { Settings } from "./pages/Settings";
 import { SignInPage } from "./pages/SignInPage";
+import { useAuth } from "./lib/auth-context";
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  return (
-    <>
-      <SignedIn>{children}</SignedIn>
-      <SignedOut>
-        <Navigate to="/sign-in" replace />
-      </SignedOut>
-    </>
-  );
+  const { user, loading } = useAuth();
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="animate-pulse text-text-muted">Loading...</div>
+      </div>
+    );
+  }
+  if (!user) {
+    return <Navigate to="/sign-in" replace />;
+  }
+  return <>{children}</>;
 }
 
 export default function App() {

@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { z } from "zod";
-import { clerkMiddlewareWithDevBypass, requireAuthWithDevBypass, resolveOrgMiddleware } from "../middleware/auth.js";
+import { jwtMiddlewareWithDevBypass, requireAuthWithDevBypass } from "../middleware/auth.js";
 import { requireUpload, requireDownload } from "../middleware/rbac.js";
 import { prisma } from "../db/index.js";
 
@@ -20,9 +20,8 @@ const updateFolderSchema = z.object({
   parentId: z.string().nullable().optional(),
 });
 
-foldersRoutes.use(clerkMiddlewareWithDevBypass());
+foldersRoutes.use(jwtMiddlewareWithDevBypass());
 foldersRoutes.use(requireAuthWithDevBypass());
-foldersRoutes.use(resolveOrgMiddleware());
 
 foldersRoutes.get("/tree", requireDownload, async (req, res) => {
   try {

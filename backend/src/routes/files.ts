@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { z } from "zod";
 import { getPresignedGetUrl, deleteObject } from "../services/r2.js";
-import { clerkMiddlewareWithDevBypass, requireAuthWithDevBypass, resolveOrgMiddleware } from "../middleware/auth.js";
+import { jwtMiddlewareWithDevBypass, requireAuthWithDevBypass } from "../middleware/auth.js";
 import { requireDownload, requireUpload } from "../middleware/rbac.js";
 import { prisma } from "../db/index.js";
 
@@ -16,9 +16,8 @@ function getOrgId(req: import("express").Request): string | null {
   return (req as any).auth?.orgId ?? null;
 }
 
-filesRoutes.use(clerkMiddlewareWithDevBypass());
+filesRoutes.use(jwtMiddlewareWithDevBypass());
 filesRoutes.use(requireAuthWithDevBypass());
-filesRoutes.use(resolveOrgMiddleware());
 
 filesRoutes.get("/", requireDownload, async (req, res) => {
   try {

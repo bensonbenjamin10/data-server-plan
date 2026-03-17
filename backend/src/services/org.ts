@@ -1,20 +1,32 @@
 import { prisma } from "../db/index.js";
 
-/**
- * Resolves Clerk's orgId (e.g. org_xxx) to our internal Organization.id.
- * Creates the org if it doesn't exist (for first-time use).
- */
-export async function resolveOrgId(clerkOrgId: string): Promise<string> {
-  const existing = await prisma.organization.findUnique({
-    where: { clerkOrgId },
-  });
-  if (existing) return existing.id;
+export interface OrgWithRole {
+  id: string;
+  name: string;
+  role: string;
+}
 
-  const created = await prisma.organization.create({
-    data: {
-      name: "Organization",
-      clerkOrgId,
+export async function getOrgsForUser(userId: string): Promise<OrgWithRole[]> {
+  const memberships = await prisma.orgMember.findMany({
+    where: { userId },
+    include: { organization: true },
+  });
+  return memberships.map((m) => ({
+    id: m.organization.id,
+    name: m.organization.name,
+    role: m.role,
+  }));
+}
+
+export async function getActiveOrgMembership(
+  userId: string,
+  orgId: string
+): Promise<{ orgId: string; orgRole: string } | null> {
+  const membership = await prisma.orgMember.findUnique({
+    where: {
+      orgId_userId: { orgId, userId },
     },
   });
-  return created.id;
+  if (!membership) return null;
+  return { orgId: membership.orgId, orgRole: membership.role };
 }

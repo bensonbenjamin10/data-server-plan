@@ -1,10 +1,9 @@
-import { clerkMiddleware, getAuth } from "@clerk/express";
 import type { Request, Response, NextFunction } from "express";
-import { resolveOrgId } from "../services/org.js";
+import { verifyToken } from "../services/auth.js";
 
 const SKIP_AUTH = process.env.SKIP_AUTH === "1";
 
-export function clerkMiddlewareWithDevBypass() {
+export function jwtMiddleware() {
   if (SKIP_AUTH) {
     return (req: Request, _res: Response, next: NextFunction) => {
       (req as any).auth = {
@@ -15,68 +14,53 @@ export function clerkMiddlewareWithDevBypass() {
       next();
     };
   }
-  return clerkMiddleware();
-}
-
-/** Normalize Clerk orgRole: "org:admin" -> "admin" */
-function normalizeOrgRole(role: string | undefined): string | undefined {
-  if (!role) return role;
-  return role.startsWith("org:") ? role.slice(4) : role;
-}
-
-/** API-friendly auth: returns 401 if not authenticated (no redirect) */
-export function requireAuthWithDevBypass() {
-  if (SKIP_AUTH) {
-    return (_req: Request, _res: Response, next: NextFunction) => next();
-  }
   return (req: Request, res: Response, next: NextFunction) => {
-    const auth = getAuth(req);
-    if (!auth.userId) {
-      res.status(401).json({ error: "Authentication required" });
+    const authHeader = req.headers.authorization;
+    const token = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : null;
+    if (!token) {
+      (req as any).auth = null;
+      next();
       return;
     }
-    (req as any).auth = {
-      ...auth,
-      orgRole: normalizeOrgRole(auth.orgRole),
-    };
+    const payload = verifyToken(token);
+    if (!payload) {
+      (req as any).auth = null;
+      next();
+      return;
+    }
+    (req as any).auth = payload;
     next();
   };
 }
 
-/**
- * Resolves Clerk orgId to our internal Organization.id.
- * Must run after requireAuthWithDevBypass. With SKIP_AUTH, orgId is already correct.
- */
-export function resolveOrgMiddleware() {
+export function requireAuth() {
   if (SKIP_AUTH) {
     return (_req: Request, _res: Response, next: NextFunction) => next();
   }
-  return async (req: Request, res: Response, next: NextFunction) => {
+  return (req: Request, res: Response, next: NextFunction) => {
     const auth = (req as any).auth;
-    const clerkOrgId = auth?.orgId;
-    if (!clerkOrgId) {
-      next();
+    if (!auth?.userId) {
+      res.status(401).json({ error: "Authentication required" });
       return;
     }
-    try {
-      const internalOrgId = await resolveOrgId(clerkOrgId);
-      (req as any).auth = { ...auth, orgId: internalOrgId };
-      next();
-    } catch (err) {
-      console.error("[resolveOrg] clerkOrgId=" + clerkOrgId, err);
-      res.status(500).json({
-        error: "Failed to resolve organization",
-        details: err instanceof Error ? err.message : String(err),
-      });
-    }
+    next();
   };
+}
+
+/** Combined middleware for protected API routes: JWT + require auth. No org resolution needed (JWT has internal orgId). */
+export function jwtMiddlewareWithDevBypass() {
+  return jwtMiddleware();
+}
+
+export function requireAuthWithDevBypass() {
+  return requireAuth();
 }
 
 export interface AuthRequest extends Request {
   auth?: {
     userId: string;
-    orgId?: string;
-    orgRole?: string;
+    orgId: string;
+    orgRole: string;
   };
 }
 

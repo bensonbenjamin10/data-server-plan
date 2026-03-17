@@ -6,6 +6,7 @@ import { filesRoutes } from "./routes/files.js";
 import { foldersRoutes } from "./routes/folders.js";
 import { searchRoutes } from "./routes/search.js";
 import { checkR2Connection } from "./services/r2.js";
+import { prisma } from "./db/index.js";
 
 const app = express();
 const PORT = process.env.PORT ?? 3001;

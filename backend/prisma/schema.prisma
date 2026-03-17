@@ -8,23 +8,22 @@ datasource db {
 }
 
 model Organization {
-  id          String   @id @default(cuid())
-  name        String
-  clerkOrgId  String?  @unique @map("clerk_org_id")
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id        String   @id @default(cuid())
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  folders   Folder[]
-  files     File[]
-  members   OrgMember[]
+  folders Folder[]
+  files   File[]
+  members OrgMember[]
 }
 
 model User {
-  id          String   @id @default(cuid())
-  email       String
-  clerkUserId String?  @unique @map("clerk_user_id")
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   orgMemberships OrgMember[]
   uploadedFiles   File[]       @relation("UploadedBy")

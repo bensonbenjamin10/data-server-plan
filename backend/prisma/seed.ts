@@ -1,6 +1,9 @@
 import { PrismaClient } from "@prisma/client";
+import bcrypt from "bcryptjs";
 
 const prisma = new PrismaClient();
+
+const DEV_PASSWORD = "dev123";
 
 async function main() {
   const org = await prisma.organization.upsert({
@@ -12,13 +15,15 @@ async function main() {
     update: {},
   });
 
+  const passwordHash = await bcrypt.hash(DEV_PASSWORD, 10);
   const user = await prisma.user.upsert({
     where: { id: "dev-user-id" },
     create: {
       id: "dev-user-id",
       email: "dev@example.com",
+      passwordHash,
     },
-    update: {},
+    update: { passwordHash },
   });
 
   await prisma.orgMember.upsert({
@@ -33,7 +38,7 @@ async function main() {
     update: {},
   });
 
-  console.log("Seed complete:", { org: org.name, user: user.email });
+  console.log("Seed complete:", { org: org.name, user: user.email, devPassword: DEV_PASSWORD });
 }
 
 main()

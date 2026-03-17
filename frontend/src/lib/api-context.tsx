@@ -1,6 +1,6 @@
 import { createContext, useContext, useMemo } from "react";
-import { useAuth } from "@clerk/clerk-react";
 import { createApi } from "./api";
+import { useAuth } from "./auth-context";
 
 type ApiType = ReturnType<typeof createApi>;
 
