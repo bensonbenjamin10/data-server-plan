@@ -33,26 +33,22 @@ railway open
 
 **Backend** (set via `railway variable set`):
 - `DATABASE_URL` - from `${{Postgres.DATABASE_URL}}`
-- `SKIP_AUTH` - 0 for production (Clerk enforced); 1 for dev bypass
+- `JWT_SECRET` - **required** for production auth (strong random string for signing JWTs)
+- `SKIP_AUTH` - 0 for production; 1 for dev bypass
 - `FRONTEND_URL` - for CORS
 - `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET_NAME` - when using R2
-- `CLERK_SECRET_KEY` - **required** for production auth (get from [Clerk Dashboard → API Keys](https://dashboard.clerk.com))
 
 **Frontend**:
 - `VITE_API_URL` - https://backend-production-611d.up.railway.app/api
-- `VITE_CLERK_PUBLISHABLE_KEY` - for production auth
 
-## Enforcing Clerk Auth
+## Auth Setup
 
-Clerk is enforced when `SKIP_AUTH` is not `1`. To enable:
-
-1. Get your **Secret Key** from [Clerk Dashboard → API Keys](https://dashboard.clerk.com) (the `sk_test_...` or `sk_live_...` value).
-2. Set it on the backend:
+1. Set `JWT_SECRET` on the backend (e.g. `openssl rand -base64 32`):
    ```bash
    cd backend && railway link -p data-joe -s backend -e production
-   railway variable set CLERK_SECRET_KEY=sk_test_YOUR_KEY_HERE
+   railway variable set JWT_SECRET=your-generated-secret
    ```
-3. Redeploy if needed: `railway up`
+2. Redeploy if needed: `railway up`
 
 ## Root Directories (for GitHub deploy)
 

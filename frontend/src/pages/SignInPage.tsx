@@ -1,21 +1,33 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/lib/auth-context";
 
 export function SignInPage() {
+  const { user, loading: authLoading, signIn, signUp } = useAuth();
+  const navigate = useNavigate();
   const [mode, setMode] = useState<"sign-in" | "sign-up">("sign-in");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [orgName, setOrgName] = useState("");
   const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
-  const { signIn, signUp } = useAuth();
-  const navigate = useNavigate();
+  const [submitLoading, setSubmitLoading] = useState(false);
+
+  useEffect(() => {
+    if (!authLoading && user) navigate("/", { replace: true });
+  }, [user, authLoading, navigate]);
+
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="animate-pulse text-text-muted">Loading...</div>
+      </div>
+    );
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
-    setLoading(true);
+    setSubmitLoading(true);
     try {
       if (mode === "sign-in") {
         await signIn(email, password);
@@ -26,7 +38,7 @@ export function SignInPage() {
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
     } finally {
-      setLoading(false);
+      setSubmitLoading(false);
     }
   }
 
@@ -88,10 +100,10 @@ export function SignInPage() {
           )}
           <button
             type="submit"
-            disabled={loading}
+            disabled={submitLoading}
             className="w-full py-2.5 rounded-lg bg-accent text-white font-medium hover:bg-accent-hover transition-colors disabled:opacity-50"
           >
-            {loading ? "..." : mode === "sign-in" ? "Sign in" : "Sign up"}
+            {submitLoading ? "..." : mode === "sign-in" ? "Sign in" : "Sign up"}
           </button>
         </form>
         <p className="mt-4 text-sm text-text-muted text-center">
