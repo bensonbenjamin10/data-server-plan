@@ -36,6 +36,9 @@ export default {
       ringColor: {
         DEFAULT: "var(--ring-color)",
       },
+      ringOffsetColor: {
+        DEFAULT: "var(--color-background)",
+      },
     },
   },
   plugins: [],
