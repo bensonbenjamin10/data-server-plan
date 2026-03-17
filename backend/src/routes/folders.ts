@@ -41,8 +41,9 @@ foldersRoutes.get("/tree", requireDownload, async (req, res) => {
       if (!byParent.has(key)) byParent.set(key, []);
       byParent.get(key)!.push(f);
     }
+    type FolderItem = (typeof all)[number];
     function buildTree(pid: string | null): Array<{ id: string; name: string; path: string; parentId: string | null; children: ReturnType<typeof buildTree> }> {
-      return (byParent.get(pid) ?? []).map((f) => ({
+      return (byParent.get(pid) ?? []).map((f: FolderItem) => ({
         id: f.id,
         name: f.name,
         path: f.path,

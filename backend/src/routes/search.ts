@@ -41,15 +41,17 @@ searchRoutes.get("/", requireDownload, async (req, res) => {
         take: 50,
       }),
     ]);
+    type FileItem = (typeof files)[number];
+    type FolderItem = (typeof folders)[number];
     res.json({
-      files: files.map((f) => ({
+      files: files.map((f: FileItem) => ({
         id: f.id,
         name: f.name,
         folderId: f.folderId,
         folderName: f.folder?.name ?? null,
         createdAt: f.createdAt,
       })),
-      folders: folders.map((f) => ({
+      folders: folders.map((f: FolderItem) => ({
         id: f.id,
         name: f.name,
         path: f.path,
