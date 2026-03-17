@@ -85,10 +85,26 @@ Set `SKIP_AUTH=1` in backend `.env` and run `npm run db:seed` to create dev org/
 
 ## Deployment (Railway)
 
-1. Create backend service: connect repo, set root to `backend`
-2. Add PostgreSQL plugin
-3. Set environment variables
-4. Create frontend service: set root to `frontend`, build command `npm run build`, start with static server
+Both services build from the **project root** (monorepo). Configure each service as follows.
+
+### Backend Service
+
+1. **Root Directory**: `.` (or leave empty)
+2. **Variables**: Add `DATABASE_URL` — either:
+   - Click **+ New** → **Database** → **PostgreSQL** (Railway auto-adds `DATABASE_URL` when linked), or
+   - Add `DATABASE_URL` manually with your PostgreSQL connection string
+3. **Other variables**: `CLERK_SECRET_KEY`, `FRONTEND_URL`, `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET_NAME`
+4. **Start command**: Uses default from `railpack.json` → `npm run start -w backend`
+
+### Frontend Service
+
+1. **Root Directory**: `.` (same as backend)
+2. **Start command** (choose one):
+   - **Option A**: Add variable `RAILPACK_CONFIG_FILE=railpack-frontend.json` (Railpack uses this at build time)
+   - **Option B**: In Railway → Service → Settings → Deploy → set **Custom Start Command** to `npm run start -w frontend`
+3. **Other variables**: `VITE_CLERK_PUBLISHABLE_KEY` (if needed at build time)
+
+> **Important**: Without a different start command, both services run the backend start script and the frontend will crash. Use Option A or B above.
 
 ## Keyboard Shortcuts
 
