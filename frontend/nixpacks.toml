@@ -1,0 +1,8 @@
+# Nixpacks config for frontend (Root Directory = frontend)
+# Fixes: build must run `npm run build`, not `npm run start`
+
+[phases.build]
+cmds = ["npm run build"]
+
+[start]
+cmd = "npx serve -s dist -l ${PORT:-3000}"

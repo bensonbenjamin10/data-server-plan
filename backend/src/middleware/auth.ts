@@ -1,5 +1,6 @@
 import { clerkMiddleware, getAuth } from "@clerk/express";
 import type { Request, Response, NextFunction } from "express";
+import { resolveOrgId } from "../services/org.js";
 
 const SKIP_AUTH = process.env.SKIP_AUTH === "1";
 
@@ -30,6 +31,32 @@ export function requireAuthWithDevBypass() {
     }
     (req as any).auth = auth;
     next();
+  };
+}
+
+/**
+ * Resolves Clerk orgId to our internal Organization.id.
+ * Must run after requireAuthWithDevBypass. With SKIP_AUTH, orgId is already correct.
+ */
+export function resolveOrgMiddleware() {
+  if (SKIP_AUTH) {
+    return (_req: Request, _res: Response, next: NextFunction) => next();
+  }
+  return async (req: Request, res: Response, next: NextFunction) => {
+    const auth = (req as any).auth;
+    const clerkOrgId = auth?.orgId;
+    if (!clerkOrgId) {
+      next();
+      return;
+    }
+    try {
+      const internalOrgId = await resolveOrgId(clerkOrgId);
+      (req as any).auth = { ...auth, orgId: internalOrgId };
+      next();
+    } catch (err) {
+      console.error("[resolveOrg]", err);
+      res.status(500).json({ error: "Failed to resolve organization" });
+    }
   };
 }
 

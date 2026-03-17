@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { clerkMiddlewareWithDevBypass, requireAuthWithDevBypass } from "../middleware/auth.js";
+import { clerkMiddlewareWithDevBypass, requireAuthWithDevBypass, resolveOrgMiddleware } from "../middleware/auth.js";
 import { requireDownload } from "../middleware/rbac.js";
 import { prisma } from "../db/index.js";
 
@@ -11,6 +11,7 @@ function getOrgId(req: import("express").Request): string | null {
 
 searchRoutes.use(clerkMiddlewareWithDevBypass());
 searchRoutes.use(requireAuthWithDevBypass());
+searchRoutes.use(resolveOrgMiddleware());
 
 searchRoutes.get("/", requireDownload, async (req, res) => {
   try {

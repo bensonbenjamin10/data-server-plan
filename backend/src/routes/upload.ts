@@ -8,7 +8,7 @@ import {
   abortMultipartUpload,
   listParts,
 } from "../services/r2.js";
-import { clerkMiddlewareWithDevBypass, requireAuthWithDevBypass } from "../middleware/auth.js";
+import { clerkMiddlewareWithDevBypass, requireAuthWithDevBypass, resolveOrgMiddleware } from "../middleware/auth.js";
 import { requireUpload } from "../middleware/rbac.js";
 import { prisma } from "../db/index.js";
 
@@ -67,6 +67,7 @@ function getUserId(req: import("express").Request): string | null {
 
 uploadRoutes.use(clerkMiddlewareWithDevBypass());
 uploadRoutes.use(requireAuthWithDevBypass());
+uploadRoutes.use(resolveOrgMiddleware());
 uploadRoutes.use(requireUpload);
 
 uploadRoutes.post("/presign", async (req, res) => {

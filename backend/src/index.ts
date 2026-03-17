@@ -18,10 +18,17 @@ const allowedOrigins = [
   ...(process.env.FRONTEND_URL ? [process.env.FRONTEND_URL] : []),
 ].filter(Boolean);
 
+function isOriginAllowed(origin: string | undefined): boolean {
+  if (!origin) return true;
+  if (allowedOrigins.includes(origin)) return true;
+  if (origin.endsWith(".railway.app") || origin.endsWith(".finjoe.app")) return true;
+  return false;
+}
+
 app.use(
   cors({
     origin: (origin, cb) => {
-      if (!origin || allowedOrigins.includes(origin)) {
+      if (isOriginAllowed(origin)) {
         cb(null, true);
       } else {
         cb(new Error("Not allowed by CORS"));
@@ -45,6 +52,12 @@ app.get("/health", (_req, res) => {
 app.get("/health/r2", async (_req, res) => {
   const r2 = await checkR2Connection();
   res.status(r2.ok ? 200 : 503).json(r2);
+});
+
+// Global error handler – log 500s for debugging
+app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+  console.error("[Unhandled error]", err);
+  res.status(500).json({ error: "Internal server error" });
 });
 
 app.listen(PORT, async () => {

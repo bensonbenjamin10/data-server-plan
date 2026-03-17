@@ -17,9 +17,18 @@ const queryClient = new QueryClient({
 
 const clerkPubKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 
+// Explicit redirect URLs so Clerk knows where to go after sign-in (fixes stuck loading)
+const clerkPaths = {
+  signInFallbackRedirectUrl: "/",
+  signUpFallbackRedirectUrl: "/",
+};
+
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
-    <ClerkProvider publishableKey={clerkPubKey || "pk_test_placeholder"}>
+    <ClerkProvider
+      publishableKey={clerkPubKey || "pk_test_placeholder"}
+      {...clerkPaths}
+    >
       <ApiProvider>
         <ToastProvider>
           <QueryClientProvider client={queryClient}>
