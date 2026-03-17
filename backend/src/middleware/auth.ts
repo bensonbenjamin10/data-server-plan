@@ -18,6 +18,12 @@ export function clerkMiddlewareWithDevBypass() {
   return clerkMiddleware();
 }
 
+/** Normalize Clerk orgRole: "org:admin" -> "admin" */
+function normalizeOrgRole(role: string | undefined): string | undefined {
+  if (!role) return role;
+  return role.startsWith("org:") ? role.slice(4) : role;
+}
+
 /** API-friendly auth: returns 401 if not authenticated (no redirect) */
 export function requireAuthWithDevBypass() {
   if (SKIP_AUTH) {
@@ -29,7 +35,10 @@ export function requireAuthWithDevBypass() {
       res.status(401).json({ error: "Authentication required" });
       return;
     }
-    (req as any).auth = auth;
+    (req as any).auth = {
+      ...auth,
+      orgRole: normalizeOrgRole(auth.orgRole),
+    };
     next();
   };
 }
@@ -54,8 +63,11 @@ export function resolveOrgMiddleware() {
       (req as any).auth = { ...auth, orgId: internalOrgId };
       next();
     } catch (err) {
-      console.error("[resolveOrg]", err);
-      res.status(500).json({ error: "Failed to resolve organization" });
+      console.error("[resolveOrg] clerkOrgId=" + clerkOrgId, err);
+      res.status(500).json({
+        error: "Failed to resolve organization",
+        details: err instanceof Error ? err.message : String(err),
+      });
     }
   };
 }
