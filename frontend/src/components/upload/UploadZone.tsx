@@ -48,10 +48,10 @@ export function UploadZone({
       onDrop={handleDrop}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
-      className={`relative border-2 border-dashed rounded-lg transition-colors ${
+      className={`relative border-2 border-dashed rounded-lg transition-colors bg-surface ${
         isDragging && !disabled
-          ? "border-accent bg-accent/5"
-          : "border-neutral/60 hover:border-neutral-dark/40"
+          ? "border-accent bg-accent/10"
+          : "border-border hover:border-border-subtle"
       } ${disabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer"} ${className}`}
     >
       <input

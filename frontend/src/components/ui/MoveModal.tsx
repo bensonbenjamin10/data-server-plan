@@ -36,7 +36,7 @@ function FolderOption({
       <button
         type="button"
         onClick={() => onSelect(node.id)}
-        className="text-left py-2 px-3 rounded hover:bg-neutral/30 text-text"
+        className="text-left py-2 px-3 rounded hover:bg-surface-hover text-text"
         style={{ paddingLeft: `${depth * 16 + 12}px` }}
       >
         {node.name}
@@ -87,7 +87,7 @@ export function MoveModal({
         <button
           type="button"
           onClick={() => handleSelect(null)}
-          className="w-full text-left py-2 px-3 rounded hover:bg-neutral/30 text-text font-medium"
+          className="w-full text-left py-2 px-3 rounded hover:bg-surface-hover text-text font-medium"
         >
           Root
         </button>

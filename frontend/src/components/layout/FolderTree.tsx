@@ -62,7 +62,7 @@ function FolderTreeItem({
           className={`flex-1 min-w-0 py-1.5 px-2 rounded text-sm truncate ${
             isActive
               ? "bg-accent/10 text-accent font-medium"
-              : "text-text-muted hover:text-text hover:bg-neutral/30"
+              : "text-text-muted hover:text-text hover:bg-surface-hover"
           }`}
         >
           {node.name}
@@ -156,7 +156,7 @@ export function FolderTree() {
       <div
         onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; }}
         onDrop={handleDropRoot}
-        className="py-1.5 px-2 rounded text-sm text-text-muted hover:bg-neutral/30"
+        className="py-1.5 px-2 rounded text-sm text-text-muted hover:bg-surface-hover"
       >
         Root
       </div>

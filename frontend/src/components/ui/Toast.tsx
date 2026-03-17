@@ -37,12 +37,12 @@ export function ToastProvider({ children }: { children: ReactNode }) {
               initial={{ opacity: 0, y: 20, x: 20 }}
               animate={{ opacity: 1, y: 0, x: 0 }}
               exit={{ opacity: 0, x: 20 }}
-              className={`px-4 py-3 rounded-lg shadow-lg text-white text-sm font-medium ${
+              className={`px-4 py-3 rounded-lg shadow-dropdown text-sm font-medium ${
                 t.type === "success"
-                  ? "bg-success"
+                  ? "bg-success text-white"
                   : t.type === "error"
-                  ? "bg-error"
-                  : "bg-primary"
+                  ? "bg-error text-white"
+                  : "bg-surface border border-border text-text"
               }`}
             >
               {t.message}

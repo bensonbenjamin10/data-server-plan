@@ -74,17 +74,17 @@ export function FileList({
 
   return (
     <div
-      className="border border-neutral/60 rounded-lg overflow-hidden bg-surface"
+      className="border border-border rounded-lg overflow-hidden bg-surface"
       onDragOver={onDrop ? handleDragOver : undefined}
       onDrop={onDrop ? (e) => handleDrop(e, currentFolderId) : undefined}
     >
-      <div className="grid grid-cols-[32px_1fr_100px_120px_100px] gap-4 px-4 py-3 bg-neutral/20 text-sm font-medium text-text-muted border-b border-neutral/60 items-center">
+      <div className="grid grid-cols-[32px_1fr_100px_120px_100px] gap-4 px-4 py-3 bg-surface-hover text-sm font-medium text-text-muted border-b border-border items-center">
         {onSelectAll && (
           <input
             type="checkbox"
             checked={allSelected}
             onChange={(e) => onSelectAll(e.target.checked)}
-            className="rounded border-neutral/60"
+            className="rounded border-border text-accent focus:ring-accent"
           />
         )}
         {!onSelectAll && <span />}
@@ -102,7 +102,7 @@ export function FileList({
           onDragStart={onDrop ? (e) => handleDragStart(e as unknown as React.DragEvent, folder.id, true) : undefined}
           onDragOver={onDrop ? handleDragOver : undefined}
           onDrop={onDrop ? (e) => handleDrop(e as unknown as React.DragEvent, folder.id) : undefined}
-          className={`grid grid-cols-[32px_1fr_100px_120px_100px] gap-4 px-4 py-3 items-center cursor-pointer hover:bg-neutral/20 transition-colors group ${
+          className={`grid grid-cols-[32px_1fr_100px_120px_100px] gap-4 px-4 py-3 items-center cursor-pointer hover:bg-surface-hover transition-colors group ${
             selectedIds.has(folder.id) ? "bg-accent/10" : ""
           }`}
           onClick={(e) => onSelect(folder.id, true, { shift: e.shiftKey, ctrl: e.ctrlKey || e.metaKey })}
@@ -114,7 +114,7 @@ export function FileList({
             checked={selectedIds.has(folder.id)}
             onChange={() => onSelect(folder.id, true)}
             onClick={(e) => e.stopPropagation()}
-            className="rounded border-neutral/60"
+            className="rounded border-border text-accent focus:ring-accent"
           />
           <span className="font-medium text-text"><span className="text-lg">📁</span> {folder.name}</span>
           <span className="text-text-muted">—</span>
@@ -156,7 +156,7 @@ export function FileList({
           onDragStart={onDrop ? (e) => handleDragStart(e as unknown as React.DragEvent, file.id, false) : undefined}
           onDragOver={onDrop ? handleDragOver : undefined}
           onDrop={onDrop ? (e) => handleDrop(e as unknown as React.DragEvent, file.folderId ?? currentFolderId) : undefined}
-          className={`grid grid-cols-[32px_1fr_100px_120px_100px] gap-4 px-4 py-3 items-center cursor-pointer hover:bg-neutral/20 transition-colors group ${
+          className={`grid grid-cols-[32px_1fr_100px_120px_100px] gap-4 px-4 py-3 items-center cursor-pointer hover:bg-surface-hover transition-colors group ${
             selectedIds.has(file.id) ? "bg-accent/10" : ""
           }`}
           onClick={(e) => onSelect(file.id, false, { shift: e.shiftKey, ctrl: e.ctrlKey || e.metaKey })}
@@ -168,7 +168,7 @@ export function FileList({
             checked={selectedIds.has(file.id)}
             onChange={() => onSelect(file.id, false)}
             onClick={(e) => e.stopPropagation()}
-            className="rounded border-neutral/60"
+            className="rounded border-border text-accent focus:ring-accent"
           />
           <span className="font-medium text-text truncate"><span className="text-lg">{getFileIcon(file.name, file.mimeType)}</span> {file.name}</span>
           <span className="text-text-muted text-sm">

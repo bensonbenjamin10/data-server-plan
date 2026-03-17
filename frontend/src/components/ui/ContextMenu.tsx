@@ -37,7 +37,7 @@ export function ContextMenu({ x, y, isOpen, onClose, children }: ContextMenuProp
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0, scale: 0.95 }}
-          className="fixed z-50 py-1 min-w-[140px] bg-surface border border-neutral/60 rounded-lg shadow-lg"
+          className="fixed z-50 py-1 min-w-[140px] bg-surface border border-border rounded-lg shadow-dropdown"
           style={{ left: x, top: y }}
         >
           {children}

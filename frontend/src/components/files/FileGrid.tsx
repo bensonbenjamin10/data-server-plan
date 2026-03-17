@@ -71,10 +71,10 @@ export function FileGrid({
           onDragStart={onDrop ? (e) => handleDragStart(e as unknown as React.DragEvent, folder.id, true) : undefined}
           onDragOver={onDrop ? handleDragOver : undefined}
           onDrop={onDrop ? (e) => handleDrop(e as unknown as React.DragEvent, folder.id) : undefined}
-          className={`p-4 rounded-lg border cursor-pointer hover:bg-neutral/20 transition-colors text-center relative group ${
+          className={`p-4 rounded-lg border cursor-pointer hover:bg-surface-hover transition-colors text-center relative group bg-surface ${
             selectedIds.has(folder.id)
               ? "border-accent bg-accent/10"
-              : "border-neutral/60"
+              : "border-border"
           }`}
           onClick={(e) => onSelect(folder.id, true, { shift: e.shiftKey, ctrl: e.ctrlKey || e.metaKey })}
           onDoubleClick={() => onDoubleClick(folder.id, true, undefined)}
@@ -85,7 +85,7 @@ export function FileGrid({
             checked={selectedIds.has(folder.id)}
             onChange={() => onSelect(folder.id, true)}
             onClick={(e) => e.stopPropagation()}
-            className="absolute top-2 left-2 rounded border-neutral/60"
+            className="absolute top-2 left-2 rounded border-border text-accent focus:ring-accent"
           />
           <div className="text-3xl mb-2">📁</div>
           <p className="font-medium text-text truncate text-sm">{folder.name}</p>
@@ -107,10 +107,10 @@ export function FileGrid({
           key={file.id}
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
-          className={`p-4 rounded-lg border cursor-pointer hover:bg-neutral/20 transition-colors text-center group relative ${
+          className={`p-4 rounded-lg border cursor-pointer hover:bg-surface-hover transition-colors text-center group relative bg-surface ${
             selectedIds.has(file.id)
               ? "border-accent bg-accent/10"
-              : "border-neutral/60"
+              : "border-border"
           }`}
           draggable={!!onDrop}
           onDragStart={onDrop ? (e) => handleDragStart(e as unknown as React.DragEvent, file.id, false) : undefined}
@@ -125,7 +125,7 @@ export function FileGrid({
             checked={selectedIds.has(file.id)}
             onChange={() => onSelect(file.id, false)}
             onClick={(e) => e.stopPropagation()}
-            className="absolute top-2 left-2 rounded border-neutral/60"
+            className="absolute top-2 left-2 rounded border-border text-accent focus:ring-accent"
           />
           <div className="text-3xl mb-2">{getFileIcon(file.name, file.mimeType)}</div>
           <p className="font-medium text-text truncate text-sm">{file.name}</p>

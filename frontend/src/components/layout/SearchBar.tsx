@@ -44,10 +44,10 @@ export function SearchBar() {
         onChange={(e) => setQuery(e.target.value)}
         onFocus={() => setIsOpen(true)}
         onBlur={() => setTimeout(() => setIsOpen(false), 150)}
-        className="w-48 px-3 py-1.5 rounded-lg border border-neutral/60 bg-surface text-sm text-text placeholder:text-text-muted"
+        className="w-48 px-3 py-1.5 rounded-lg border border-border bg-background text-sm text-text placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 focus:ring-offset-background"
       />
       {showDropdown && (
-        <div className="absolute top-full left-0 mt-1 w-80 max-h-64 overflow-auto bg-surface border border-neutral/60 rounded-lg shadow-lg z-50">
+        <div className="absolute top-full left-0 mt-1 w-80 max-h-64 overflow-auto bg-surface border border-border rounded-lg shadow-dropdown z-50">
           {isLoading ? (
             <div className="p-4 text-text-muted text-sm">Searching...</div>
           ) : !hasResults ? (
@@ -63,7 +63,7 @@ export function SearchBar() {
                     setQuery("");
                     setIsOpen(false);
                   }}
-                  className="w-full px-4 py-2 text-left text-sm hover:bg-neutral/30 flex items-center gap-2"
+                  className="w-full px-4 py-2 text-left text-sm hover:bg-surface-hover flex items-center gap-2 text-text"
                 >
                   <span className="text-lg">📁</span>
                   <span className="truncate">{f.name}</span>
@@ -78,7 +78,7 @@ export function SearchBar() {
                     setQuery("");
                     setIsOpen(false);
                   }}
-                  className="w-full px-4 py-2 text-left text-sm hover:bg-neutral/30 flex items-center gap-2"
+                  className="w-full px-4 py-2 text-left text-sm hover:bg-surface-hover flex items-center gap-2 text-text"
                 >
                   <span className="text-lg">{getFileIcon(f.name, null)}</span>
                   <span className="truncate flex-1">{f.name}</span>

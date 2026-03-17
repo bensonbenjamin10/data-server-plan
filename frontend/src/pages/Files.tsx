@@ -433,7 +433,7 @@ export function Files() {
                 setSortBy(s);
                 setSortDir(d);
               }}
-              className="text-sm px-3 py-1.5 rounded-lg border border-neutral/60 bg-surface text-text"
+              className="text-sm px-3 py-1.5 rounded-lg border border-border bg-surface text-text"
             >
               <option value="name-asc">Name A–Z</option>
               <option value="name-desc">Name Z–A</option>
@@ -444,13 +444,13 @@ export function Files() {
             </select>
             <button
               onClick={() => setViewMode("list")}
-              className={`p-2 rounded ${viewMode === "list" ? "bg-accent/20 text-accent" : "text-text-muted hover:bg-neutral/30"}`}
+              className={`p-2 rounded ${viewMode === "list" ? "bg-accent/10 text-accent" : "text-text-muted hover:bg-surface-hover"}`}
             >
               List
             </button>
             <button
               onClick={() => setViewMode("grid")}
-              className={`p-2 rounded ${viewMode === "grid" ? "bg-accent/20 text-accent" : "text-text-muted hover:bg-neutral/30"}`}
+              className={`p-2 rounded ${viewMode === "grid" ? "bg-accent/10 text-accent" : "text-text-muted hover:bg-surface-hover"}`}
             >
               Grid
             </button>
@@ -503,7 +503,7 @@ export function Files() {
         </AnimatePresence>
 
         {files.length === 0 && folders.length === 0 ? (
-          <div className="text-center py-16 bg-surface rounded-lg border border-neutral/60">
+          <div className="text-center py-16 bg-surface rounded-lg border border-border">
             <p className="text-4xl mb-4">📂</p>
             <p className="text-text-muted font-medium">No files yet</p>
             <p className="text-sm text-text-muted mt-1">
@@ -565,7 +565,7 @@ export function Files() {
                     setFolderToRename({ id: contextMenu.item.id, name: contextMenu.item.name });
                     setContextMenu(null);
                   }}
-                  className="w-full px-4 py-2 text-left text-sm hover:bg-neutral/30"
+                  className="w-full px-4 py-2 text-left text-sm hover:bg-surface-hover"
                 >
                   Rename
                 </button>
@@ -574,7 +574,7 @@ export function Files() {
                     setFolderToMove({ id: contextMenu.item.id, name: contextMenu.item.name });
                     setContextMenu(null);
                   }}
-                  className="w-full px-4 py-2 text-left text-sm hover:bg-neutral/30"
+                  className="w-full px-4 py-2 text-left text-sm hover:bg-surface-hover"
                 >
                   Move
                 </button>
@@ -583,7 +583,7 @@ export function Files() {
                     setFolderToDelete({ id: contextMenu.item.id, name: contextMenu.item.name });
                     setContextMenu(null);
                   }}
-                  className="w-full px-4 py-2 text-left text-sm text-error hover:bg-neutral/30"
+                  className="w-full px-4 py-2 text-left text-sm text-error hover:bg-surface-hover"
                 >
                   Delete
                 </button>
@@ -606,7 +606,7 @@ export function Files() {
                       }
                       setContextMenu(null);
                     }}
-                    className="w-full px-4 py-2 text-left text-sm hover:bg-neutral/30"
+                    className="w-full px-4 py-2 text-left text-sm hover:bg-surface-hover"
                   >
                     Preview
                   </button>
@@ -615,7 +615,7 @@ export function Files() {
                       handleDownload(contextMenu.file!);
                       setContextMenu(null);
                     }}
-                    className="w-full px-4 py-2 text-left text-sm hover:bg-neutral/30"
+                    className="w-full px-4 py-2 text-left text-sm hover:bg-surface-hover"
                   >
                     Download
                   </button>
@@ -624,7 +624,7 @@ export function Files() {
                       setFileToRename(contextMenu.file!);
                       setContextMenu(null);
                     }}
-                    className="w-full px-4 py-2 text-left text-sm hover:bg-neutral/30"
+                    className="w-full px-4 py-2 text-left text-sm hover:bg-surface-hover"
                   >
                     Rename
                   </button>
@@ -633,7 +633,7 @@ export function Files() {
                       setFileToMove(contextMenu.file!);
                       setContextMenu(null);
                     }}
-                    className="w-full px-4 py-2 text-left text-sm hover:bg-neutral/30"
+                    className="w-full px-4 py-2 text-left text-sm hover:bg-surface-hover"
                   >
                     Move
                   </button>
@@ -642,7 +642,7 @@ export function Files() {
                       setFileToDelete(contextMenu.file!);
                       setContextMenu(null);
                     }}
-                    className="w-full px-4 py-2 text-left text-sm text-error hover:bg-neutral/30"
+                    className="w-full px-4 py-2 text-left text-sm text-error hover:bg-surface-hover"
                   >
                     Delete
                   </button>

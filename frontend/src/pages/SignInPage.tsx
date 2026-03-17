@@ -44,13 +44,13 @@ export function SignInPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background">
-      <div className="w-full max-w-sm p-8 border border-neutral/60 rounded-xl bg-surface shadow-sm">
+      <div className="w-full max-w-sm p-8 border border-border rounded-xl bg-surface shadow-lg">
         <h1 className="text-2xl font-display font-semibold text-text mb-6">
           {mode === "sign-in" ? "Sign in" : "Create account"}
         </h1>
         <form onSubmit={handleSubmit} className="space-y-4">
           {error && (
-            <div className="p-3 rounded-lg bg-red-500/10 text-red-600 text-sm">
+            <div className="p-3 rounded-lg bg-error/10 text-error text-sm">
               {error}
             </div>
           )}
@@ -64,7 +64,7 @@ export function SignInPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
-              className="w-full px-4 py-2 rounded-lg border border-neutral/60 bg-background text-text focus:outline-none focus:ring-2 focus:ring-accent"
+              className="w-full px-4 py-2 rounded-lg border border-border bg-background text-text focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 focus:ring-offset-background placeholder:text-text-muted"
               placeholder="you@example.com"
             />
           </div>
@@ -79,7 +79,7 @@ export function SignInPage() {
               onChange={(e) => setPassword(e.target.value)}
               required
               minLength={mode === "sign-up" ? 8 : 1}
-              className="w-full px-4 py-2 rounded-lg border border-neutral/60 bg-background text-text focus:outline-none focus:ring-2 focus:ring-accent"
+              className="w-full px-4 py-2 rounded-lg border border-border bg-background text-text focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 focus:ring-offset-background placeholder:text-text-muted"
               placeholder={mode === "sign-up" ? "Min 8 characters" : ""}
             />
           </div>
@@ -93,7 +93,7 @@ export function SignInPage() {
                 type="text"
                 value={orgName}
                 onChange={(e) => setOrgName(e.target.value)}
-                className="w-full px-4 py-2 rounded-lg border border-neutral/60 bg-background text-text focus:outline-none focus:ring-2 focus:ring-accent"
+                className="w-full px-4 py-2 rounded-lg border border-border bg-background text-text focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 focus:ring-offset-background placeholder:text-text-muted"
                 placeholder="My Organization"
               />
             </div>

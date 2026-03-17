@@ -14,11 +14,11 @@ export function Breadcrumbs({ items }: BreadcrumbsProps) {
     <nav className="flex items-center gap-2 text-sm text-text-muted">
       {items.map((item, i) => (
         <span key={i} className="flex items-center gap-2">
-          {i > 0 && <span className="text-neutral-dark">/</span>}
+          {i > 0 && <span className="text-border-subtle">/</span>}
           {item.path ? (
             <Link
               to={item.path}
-              className="hover:text-accent transition-colors"
+              className="hover:text-accent transition-colors focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 focus:ring-offset-background rounded"
             >
               {item.label}
             </Link>

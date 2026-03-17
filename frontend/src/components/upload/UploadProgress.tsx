@@ -27,7 +27,7 @@ export function UploadProgress({
       initial={{ opacity: 0, height: 0 }}
       animate={{ opacity: 1, height: "auto" }}
       exit={{ opacity: 0, height: 0 }}
-      className="bg-surface rounded-lg border border-neutral/60 p-4 shadow-sm"
+      className="bg-surface rounded-lg border border-border p-4 shadow-card"
     >
       <div className="flex items-center justify-between gap-4 mb-2">
         <span className="font-medium text-text truncate flex-1 min-w-0">
@@ -60,7 +60,7 @@ export function UploadProgress({
           )}
         </div>
       </div>
-      <div className="h-2 bg-neutral/40 rounded-full overflow-hidden">
+      <div className="h-2 bg-border rounded-full overflow-hidden">
         <motion.div
           className="h-full bg-accent rounded-full"
           initial={false}

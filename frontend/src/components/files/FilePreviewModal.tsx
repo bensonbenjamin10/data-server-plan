@@ -64,7 +64,7 @@ export function FilePreviewModal({
           className="max-w-4xl max-h-[90vh] w-full bg-surface rounded-lg overflow-hidden flex flex-col"
           onClick={(e) => e.stopPropagation()}
         >
-          <div className="flex items-center justify-between px-4 py-2 border-b border-neutral/60">
+          <div className="flex items-center justify-between px-4 py-2 border-b border-border bg-surface">
             <span className="font-medium truncate">{fileName}</span>
             <button
               onClick={onClose}

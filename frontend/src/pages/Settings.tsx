@@ -28,7 +28,7 @@ export function Settings() {
           Settings
         </h1>
 
-        <div className="border border-neutral/60 rounded-lg p-6 bg-surface max-w-md">
+        <div className="border border-border rounded-lg p-6 bg-surface max-w-md">
           <h2 className="font-medium text-text mb-2">Storage</h2>
           <p className="text-text-muted text-sm">
             {stats ? (
@@ -41,7 +41,7 @@ export function Settings() {
           </p>
         </div>
 
-        <div className="border border-neutral/60 rounded-lg p-6 bg-surface max-w-md">
+        <div className="border border-border rounded-lg p-6 bg-surface max-w-md">
           <h2 className="font-medium text-text mb-2">Organization</h2>
           <p className="text-text-muted text-sm">
             Organization settings can be managed here.

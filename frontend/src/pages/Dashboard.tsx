@@ -43,7 +43,7 @@ export function Dashboard() {
           <div className="flex gap-4 items-center">
             <Link
               to="/files"
-              className="inline-flex items-center gap-2 px-6 py-3 bg-accent text-white rounded-lg font-medium hover:bg-accent-hover transition-colors shadow-sm"
+              className="inline-flex items-center gap-2 px-6 py-3 bg-accent text-white rounded-lg font-medium hover:bg-accent-hover transition-colors shadow-sm focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 focus:ring-offset-background"
             >
               Go to Files
             </Link>
@@ -56,13 +56,13 @@ export function Dashboard() {
         {recentFiles.length > 0 && (
           <div>
             <h2 className="text-lg font-semibold text-text mb-4">Recent files</h2>
-            <div className="border border-neutral/60 rounded-lg overflow-hidden bg-surface">
+            <div className="border border-border rounded-lg overflow-hidden bg-surface">
               {recentFiles.map((file) => (
                 <button
                   key={file.id}
                   type="button"
                   onClick={() => navigate(file.folderId ? `/files/${file.folderId}` : "/files")}
-                  className="w-full px-4 py-3 text-left hover:bg-neutral/20 flex items-center gap-3"
+                  className="w-full px-4 py-3 text-left hover:bg-surface-hover flex items-center gap-3 text-text"
                 >
                   <span className="text-xl">{getFileIcon(file.name, file.mimeType)}</span>
                   <span className="truncate flex-1">{file.name}</span>

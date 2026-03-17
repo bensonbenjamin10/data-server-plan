@@ -34,17 +34,17 @@ export function Modal({ isOpen, onClose, title, children }: ModalProps) {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="absolute inset-0 bg-black/40"
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
             onClick={onClose}
           />
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.95 }}
-            className="relative bg-surface rounded-lg shadow-lg border border-neutral/60 max-w-md w-full"
+            className="relative bg-surface rounded-lg shadow-lg border border-border max-w-md w-full"
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 className="px-6 py-4 border-b border-neutral/60 font-display font-semibold text-text">
+            <h3 className="px-6 py-4 border-b border-border font-display font-semibold text-text">
               {title}
             </h3>
             <div className="px-6 py-4">{children}</div>
@@ -88,7 +88,7 @@ export function ConfirmModal({
         <div className="flex justify-end gap-2">
           <button
             onClick={onClose}
-            className="px-4 py-2 rounded-lg border border-neutral/60 text-text-muted hover:bg-neutral/30"
+            className="px-4 py-2 rounded-lg border border-border text-text-muted hover:bg-surface-hover"
           >
             {cancelLabel}
           </button>
@@ -157,7 +157,7 @@ export function PromptModal({
             ref={inputRef}
             type="text"
             defaultValue={defaultValue}
-            className="w-full px-3 py-2 rounded-lg border border-neutral/60 bg-surface text-text"
+            className="w-full px-3 py-2 rounded-lg border border-border bg-background text-text focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 focus:ring-offset-background"
             placeholder={label}
           />
         </div>
@@ -165,7 +165,7 @@ export function PromptModal({
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 rounded-lg border border-neutral/60 text-text-muted hover:bg-neutral/30"
+            className="px-4 py-2 rounded-lg border border-border text-text-muted hover:bg-surface-hover"
           >
             {cancelLabel}
           </button>

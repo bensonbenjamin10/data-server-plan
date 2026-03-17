@@ -13,9 +13,9 @@ export function Sidebar() {
   const isFilesSection = location.pathname.startsWith("/files");
 
   return (
-    <aside className="w-64 bg-surface border-r border-neutral/60 flex flex-col shrink-0">
-      <div className="p-6 border-b border-neutral/60">
-        <h2 className="font-display font-semibold text-primary text-lg">
+    <aside className="w-64 bg-surface border-r border-border flex flex-col shrink-0">
+      <div className="p-6 border-b border-border">
+        <h2 className="font-display font-semibold text-text text-lg">
           Org Storage
         </h2>
       </div>
@@ -27,7 +27,7 @@ export function Sidebar() {
             end={item.to === "/"}
             className={({ isActive }) =>
               `relative px-4 py-3 rounded-lg font-medium transition-colors ${
-                isActive ? "text-accent bg-accent/10" : "text-text-muted hover:text-text hover:bg-neutral/30"
+                isActive ? "text-accent bg-accent/10" : "text-text-muted hover:text-text hover:bg-surface-hover"
               }`
             }
           >

@@ -26,7 +26,7 @@ export function BulkActionBar({
       initial={{ y: 10, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
       exit={{ y: 10, opacity: 0 }}
-      className="flex items-center gap-4 px-4 py-3 bg-accent/10 border border-accent/30 rounded-lg"
+      className="flex items-center gap-4 px-4 py-3 bg-surface border-t border-border rounded-lg"
     >
       <span className="font-medium text-text">
         {selectedCount} selected
@@ -35,14 +35,14 @@ export function BulkActionBar({
         {hasFiles && (
           <button
             onClick={onBulkDownload}
-            className="text-sm px-3 py-1.5 rounded-lg bg-accent text-white hover:bg-accent-hover font-medium"
+            className="text-sm px-3 py-1.5 rounded-lg bg-accent text-white hover:bg-accent-hover font-medium focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 focus:ring-offset-background"
           >
             Download
           </button>
         )}
         <button
           onClick={onBulkMove}
-          className="text-sm px-3 py-1.5 rounded-lg border border-neutral/60 hover:bg-neutral/30 font-medium"
+          className="text-sm px-3 py-1.5 rounded-lg border border-border hover:bg-surface-hover font-medium text-text focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 focus:ring-offset-background"
         >
           Move
         </button>
