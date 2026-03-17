@@ -103,6 +103,19 @@ export function createApi(getToken: () => Promise<string | null>) {
     return res.json() as Promise<{ files: FileRecord[] }>;
   },
 
+  async getFileStats() {
+    const res = await fetchWithAuth("/files/stats");
+    if (!res.ok) throw new Error(await res.text());
+    return res.json() as Promise<{ fileCount: number; totalSize: number }>;
+  },
+
+  async getRecentFiles(limit?: number) {
+    const qs = limit ? `?limit=${limit}` : "";
+    const res = await fetchWithAuth(`/files/recent${qs}`);
+    if (!res.ok) throw new Error(await res.text());
+    return res.json() as Promise<{ files: FileRecord[] }>;
+  },
+
   async getDownloadUrl(fileId: string) {
     const res = await fetchWithAuth(`/files/${fileId}/download`);
     if (!res.ok) throw new Error(await res.text());
@@ -163,6 +176,15 @@ export function createApi(getToken: () => Promise<string | null>) {
   async deleteFolder(folderId: string) {
     const res = await fetchWithAuth(`/folders/${folderId}`, { method: "DELETE" });
     if (!res.ok) throw new Error(await res.text());
+  },
+
+  async search(q: string) {
+    const res = await fetchWithAuth(`/search?q=${encodeURIComponent(q)}`);
+    if (!res.ok) throw new Error(await res.text());
+    return res.json() as Promise<{
+      files: Array<{ id: string; name: string; folderId: string | null; folderName: string | null; createdAt: string }>;
+      folders: Array<{ id: string; name: string; path: string; parentId: string | null }>;
+    }>;
   },
 };
 }

@@ -1,10 +1,12 @@
 import { UserButton } from "@clerk/clerk-react";
 import { OrganizationSwitcher } from "@clerk/clerk-react";
+import { SearchBar } from "./SearchBar";
 
 export function Header() {
   return (
     <header className="h-14 border-b border-neutral/60 bg-surface flex items-center justify-between px-6 shrink-0">
       <div className="flex items-center gap-4">
+        <SearchBar />
         <OrganizationSwitcher
           afterCreateOrganizationUrl="/files"
           afterSelectOrganizationUrl="/files"

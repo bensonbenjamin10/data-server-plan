@@ -45,6 +45,49 @@ filesRoutes.get("/", requireDownload, async (req, res) => {
   }
 });
 
+filesRoutes.get("/stats", requireDownload, async (req, res) => {
+  try {
+    const orgId = getOrgId(req);
+    if (!orgId) {
+      res.status(403).json({ error: "Organization context required" });
+      return;
+    }
+    const [fileCount, sizeResult] = await Promise.all([
+      prisma.file.count({ where: { orgId } }),
+      prisma.file.aggregate({
+        where: { orgId },
+        _sum: { size: true },
+      }),
+    ]);
+    const totalSize = sizeResult._sum.size ?? 0;
+    res.json({ fileCount, totalSize });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to get stats" });
+  }
+});
+
+filesRoutes.get("/recent", requireDownload, async (req, res) => {
+  try {
+    const orgId = getOrgId(req);
+    if (!orgId) {
+      res.status(403).json({ error: "Organization context required" });
+      return;
+    }
+    const limit = Math.min(parseInt((req.query.limit as string) || "10", 10) || 10, 50);
+    const files = await prisma.file.findMany({
+      where: { orgId },
+      include: { folder: { select: { name: true, id: true } } },
+      orderBy: { updatedAt: "desc" },
+      take: limit,
+    });
+    res.json({ files });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to list recent files" });
+  }
+});
+
 filesRoutes.get("/:id/download", requireDownload, async (req, res) => {
   try {
     const orgId = getOrgId(req);

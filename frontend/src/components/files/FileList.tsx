@@ -1,5 +1,6 @@
 import { motion } from "framer-motion";
 import type { FileRecord } from "@/lib/api";
+import { getFileIcon } from "@/lib/fileIcons";
 
 interface FileListProps {
   files: FileRecord[];
@@ -7,7 +8,7 @@ interface FileListProps {
   selectedIds: Set<string>;
   onSelect: (id: string, isFolder: boolean, modifiers?: { shift?: boolean; ctrl?: boolean }) => void;
   onSelectAll?: (checked: boolean) => void;
-  onDoubleClick: (id: string, isFolder: boolean) => void;
+  onDoubleClick: (id: string, isFolder: boolean, file?: FileRecord) => void;
   onDownload: (file: FileRecord) => void;
   onDelete: (file: FileRecord) => void;
   onRename?: (file: FileRecord) => void;
@@ -115,7 +116,7 @@ export function FileList({
             onClick={(e) => e.stopPropagation()}
             className="rounded border-neutral/60"
           />
-          <span className="font-medium text-text">📁 {folder.name}</span>
+          <span className="font-medium text-text"><span className="text-lg">📁</span> {folder.name}</span>
           <span className="text-text-muted">—</span>
           <span className="text-text-muted">—</span>
           <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -159,7 +160,7 @@ export function FileList({
             selectedIds.has(file.id) ? "bg-accent/10" : ""
           }`}
           onClick={(e) => onSelect(file.id, false, { shift: e.shiftKey, ctrl: e.ctrlKey || e.metaKey })}
-          onDoubleClick={() => onDoubleClick(file.id, false)}
+          onDoubleClick={() => onDoubleClick(file.id, false, file)}
           onContextMenu={(e) => onContextMenu?.(e, { id: file.id, name: file.name, isFolder: false }, file)}
         >
           <input
@@ -169,7 +170,7 @@ export function FileList({
             onClick={(e) => e.stopPropagation()}
             className="rounded border-neutral/60"
           />
-          <span className="font-medium text-text truncate">{file.name}</span>
+          <span className="font-medium text-text truncate"><span className="text-lg">{getFileIcon(file.name, file.mimeType)}</span> {file.name}</span>
           <span className="text-text-muted text-sm">
             {formatSize(file.size)}
           </span>

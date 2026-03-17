@@ -1,12 +1,13 @@
 import { motion } from "framer-motion";
 import type { FileRecord } from "@/lib/api";
+import { getFileIcon } from "@/lib/fileIcons";
 
 interface FileGridProps {
   files: FileRecord[];
   folders: { id: string; name: string; path: string }[];
   selectedIds: Set<string>;
   onSelect: (id: string, isFolder: boolean, modifiers?: { shift?: boolean; ctrl?: boolean }) => void;
-  onDoubleClick: (id: string, isFolder: boolean) => void;
+  onDoubleClick: (id: string, isFolder: boolean, file?: FileRecord) => void;
   onDownload: (file: FileRecord) => void;
   onDelete: (file: FileRecord) => void;
   onRename?: (file: FileRecord) => void;
@@ -76,7 +77,7 @@ export function FileGrid({
               : "border-neutral/60"
           }`}
           onClick={(e) => onSelect(folder.id, true, { shift: e.shiftKey, ctrl: e.ctrlKey || e.metaKey })}
-          onDoubleClick={() => onDoubleClick(folder.id, true)}
+          onDoubleClick={() => onDoubleClick(folder.id, true, undefined)}
           onContextMenu={(e) => onContextMenu?.(e, { id: folder.id, name: folder.name, isFolder: true })}
         >
           <input
@@ -116,7 +117,7 @@ export function FileGrid({
           onDragOver={onDrop ? handleDragOver : undefined}
           onDrop={onDrop ? (e) => handleDrop(e as unknown as React.DragEvent, file.folderId ?? currentFolderId) : undefined}
           onClick={(e) => onSelect(file.id, false, { shift: e.shiftKey, ctrl: e.ctrlKey || e.metaKey })}
-          onDoubleClick={() => onDoubleClick(file.id, false)}
+          onDoubleClick={() => onDoubleClick(file.id, false, file)}
           onContextMenu={(e) => onContextMenu?.(e, { id: file.id, name: file.name, isFolder: false }, file)}
         >
           <input
@@ -126,7 +127,7 @@ export function FileGrid({
             onClick={(e) => e.stopPropagation()}
             className="absolute top-2 left-2 rounded border-neutral/60"
           />
-          <div className="text-3xl mb-2">📄</div>
+          <div className="text-3xl mb-2">{getFileIcon(file.name, file.mimeType)}</div>
           <p className="font-medium text-text truncate text-sm">{file.name}</p>
           <p className="text-xs text-text-muted mt-1">{formatSize(file.size)}</p>
           <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1 flex-wrap justify-center opacity-0 group-hover:opacity-100 transition-opacity">

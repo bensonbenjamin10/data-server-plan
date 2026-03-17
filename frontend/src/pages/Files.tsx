@@ -16,6 +16,7 @@ import { BulkActionBar } from "@/components/files/BulkActionBar";
 import { ConfirmModal, PromptModal } from "@/components/ui/Modal";
 import { MoveModal } from "@/components/ui/MoveModal";
 import { ContextMenu } from "@/components/ui/ContextMenu";
+import { FilePreviewModal } from "@/components/files/FilePreviewModal";
 import type { FileRecord } from "@/lib/api";
 
 export function Files() {
@@ -39,6 +40,7 @@ export function Files() {
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
   const [bulkMoveOpen, setBulkMoveOpen] = useState(false);
   const [createFolderOpen, setCreateFolderOpen] = useState(false);
+  const [previewFile, setPreviewFile] = useState<{ id: string; name: string; mimeType: string | null; url: string } | null>(null);
   const [contextMenu, setContextMenu] = useState<{
     x: number;
     y: number;
@@ -224,12 +226,24 @@ export function Files() {
   }, [api, fileToDelete, queryClient, showToast]);
 
   const handleDoubleClick = useCallback(
-    (id: string, isFolder: boolean) => {
+    async (id: string, isFolder: boolean, file?: FileRecord) => {
       if (isFolder) {
         navigate(`/files/${id}`);
+      } else if (file) {
+        try {
+          const { url } = await api.getDownloadUrl(file.id);
+          setPreviewFile({
+            id: file.id,
+            name: file.name,
+            mimeType: file.mimeType ?? null,
+            url,
+          });
+        } catch {
+          showToast("Failed to open preview", "error");
+        }
       }
     },
-    [navigate]
+    [navigate, api, showToast]
   );
 
   const handleCreateFolderClick = useCallback(() => {
@@ -578,6 +592,25 @@ export function Files() {
               contextMenu.file && (
                 <>
                   <button
+                    onClick={async () => {
+                      try {
+                        const { url } = await api.getDownloadUrl(contextMenu.file!.id);
+                        setPreviewFile({
+                          id: contextMenu.file!.id,
+                          name: contextMenu.file!.name,
+                          mimeType: contextMenu.file!.mimeType ?? null,
+                          url,
+                        });
+                      } catch {
+                        showToast("Failed to load preview", "error");
+                      }
+                      setContextMenu(null);
+                    }}
+                    className="w-full px-4 py-2 text-left text-sm hover:bg-neutral/30"
+                  >
+                    Preview
+                  </button>
+                  <button
                     onClick={() => {
                       handleDownload(contextMenu.file!);
                       setContextMenu(null);
@@ -701,6 +734,14 @@ export function Files() {
             folderTree={folderTree}
           />
         )}
+
+        <FilePreviewModal
+          isOpen={!!previewFile}
+          onClose={() => setPreviewFile(null)}
+          url={previewFile?.url ?? null}
+          fileName={previewFile?.name ?? ""}
+          mimeType={previewFile?.mimeType ?? null}
+        />
       </motion.div>
     </div>
   );
