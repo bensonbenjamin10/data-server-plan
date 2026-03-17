@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "dev:local": "cross-env PORT=3001 tsx watch src/index.ts",
-    "build": "tsc",
+    "build": "prisma generate && tsc",
     "start": "npx prisma db push && npx prisma db seed && node dist/index.js",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",

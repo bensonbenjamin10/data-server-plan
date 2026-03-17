@@ -1,4 +1,3 @@
-import type { OrgMember, Organization } from "@prisma/client";
 import { prisma } from "../db/index.js";
 
 export interface OrgWithRole {
@@ -12,7 +11,7 @@ export async function getOrgsForUser(userId: string): Promise<OrgWithRole[]> {
     where: { userId },
     include: { organization: true },
   });
-  return memberships.map((m: OrgMember & { organization: Organization }) => ({
+  return memberships.map((m: { organization: { id: string; name: string }; role: string }) => ({
     id: m.organization.id,
     name: m.organization.name,
     role: m.role,
