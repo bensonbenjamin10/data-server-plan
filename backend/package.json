@@ -13,6 +13,7 @@
     "db:seed": "tsx prisma/seed.ts",
     "r2:cors": "tsx scripts/set-r2-cors.ts"
   },
+  "postinstall": "prisma generate",
   "prisma": {
     "seed": "tsx prisma/seed.ts"
   },
