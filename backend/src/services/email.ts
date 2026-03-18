@@ -1,7 +1,15 @@
 import { Resend } from "resend";
 import { logger } from "../lib/logger.js";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+let resend: Resend | null = null;
+
+function getResend(): Resend | null {
+  if (!resend && process.env.RESEND_API_KEY) {
+    resend = new Resend(process.env.RESEND_API_KEY);
+  }
+  return resend;
+}
+
 const FROM_EMAIL = process.env.RESEND_FROM_EMAIL || "noreply@finjoe.app";
 const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:5173";
 
@@ -11,8 +19,13 @@ interface EmailResult {
 }
 
 async function send(to: string, subject: string, html: string): Promise<EmailResult> {
+  const client = getResend();
+  if (!client) {
+    logger.warn({ to, subject }, "RESEND_API_KEY not set — skipping email");
+    return { success: false, error: "Email service not configured" };
+  }
   try {
-    const { error } = await resend.emails.send({ from: FROM_EMAIL, to, subject, html });
+    const { error } = await client.emails.send({ from: FROM_EMAIL, to, subject, html });
     if (error) {
       logger.error({ error }, "Email send failed");
       return { success: false, error: error.message };
