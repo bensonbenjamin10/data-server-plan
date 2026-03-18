@@ -18,8 +18,13 @@ import { logger } from "./lib/logger.js";
 const app = express();
 const PORT = process.env.PORT ?? 3001;
 
-// Security headers
-app.use(helmet());
+// Security headers (configured for cross-origin API access)
+app.use(
+  helmet({
+    crossOriginResourcePolicy: { policy: "cross-origin" },
+    crossOriginEmbedderPolicy: false,
+  })
+);
 
 const allowedOrigins = [
   "http://localhost:5173",
@@ -107,8 +112,13 @@ app.get("/health/r2", async (_req, res) => {
   res.status(r2.ok ? 200 : 503).json(r2);
 });
 
-// Global error handler
-app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+// Global error handler — preserve CORS headers so browsers see the real error
+app.use((err: Error, req: express.Request, res: express.Response, _next: express.NextFunction) => {
+  const origin = req.headers.origin;
+  if (origin && isOriginAllowed(origin)) {
+    res.setHeader("Access-Control-Allow-Origin", origin);
+    res.setHeader("Access-Control-Allow-Credentials", "true");
+  }
   logger.error({ err }, "Unhandled error");
   res.status(500).json({ error: "Internal server error" });
 });
