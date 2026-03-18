@@ -4,6 +4,7 @@ export function useKeyboardShortcuts(handlers: {
   onUpload?: () => void;
   onSearch?: () => void;
   onEscape?: () => void;
+  onSelectAll?: () => void;
 }) {
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
@@ -19,9 +20,13 @@ export function useKeyboardShortcuts(handlers: {
           e.preventDefault();
           handlers.onSearch?.();
         }
+        if (e.key === "a" && handlers.onSelectAll) {
+          e.preventDefault();
+          handlers.onSelectAll();
+        }
       }
     },
-    [handlers.onUpload, handlers.onSearch, handlers.onEscape]
+    [handlers.onUpload, handlers.onSearch, handlers.onEscape, handlers.onSelectAll]
   );
 
   useEffect(() => {

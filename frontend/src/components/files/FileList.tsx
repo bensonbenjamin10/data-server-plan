@@ -1,3 +1,4 @@
+import { useRef, useEffect } from "react";
 import { motion } from "framer-motion";
 import type { FileRecord } from "@/lib/api";
 import { getFileIcon } from "@/lib/fileIcons";
@@ -71,6 +72,13 @@ export function FileList({
   };
   const allIds = [...folders.map((f) => f.id), ...files.map((f) => f.id)];
   const allSelected = allIds.length > 0 && allIds.every((id) => selectedIds.has(id));
+  const selectAllRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const el = selectAllRef.current;
+    if (!el) return;
+    el.indeterminate = selectedIds.size > 0 && !allSelected;
+  }, [selectedIds.size, allSelected]);
 
   return (
     <div
@@ -81,6 +89,7 @@ export function FileList({
       <div className="grid grid-cols-[32px_1fr_100px_120px_100px] gap-4 px-4 py-3 bg-surface-hover text-sm font-medium text-text-muted border-b border-border items-center">
         {onSelectAll && (
           <input
+            ref={selectAllRef}
             type="checkbox"
             checked={allSelected}
             onChange={(e) => onSelectAll(e.target.checked)}
@@ -102,6 +111,7 @@ export function FileList({
           onDragStart={onDrop ? (e) => handleDragStart(e as unknown as React.DragEvent, folder.id, true) : undefined}
           onDragOver={onDrop ? handleDragOver : undefined}
           onDrop={onDrop ? (e) => handleDrop(e as unknown as React.DragEvent, folder.id) : undefined}
+          data-file-explorer-row={true}
           className={`grid grid-cols-[32px_1fr_100px_120px_100px] gap-4 px-4 py-3 items-center cursor-pointer hover:bg-surface-hover transition-colors group ${
             selectedIds.has(folder.id) ? "bg-accent/10" : ""
           }`}
@@ -112,7 +122,7 @@ export function FileList({
           <input
             type="checkbox"
             checked={selectedIds.has(folder.id)}
-            onChange={() => onSelect(folder.id, true)}
+            onChange={() => onSelect(folder.id, true, { ctrl: true })}
             onClick={(e) => e.stopPropagation()}
             className="rounded border-border text-accent focus:ring-accent"
           />
@@ -156,6 +166,7 @@ export function FileList({
           onDragStart={onDrop ? (e) => handleDragStart(e as unknown as React.DragEvent, file.id, false) : undefined}
           onDragOver={onDrop ? handleDragOver : undefined}
           onDrop={onDrop ? (e) => handleDrop(e as unknown as React.DragEvent, file.folderId ?? currentFolderId) : undefined}
+          data-file-explorer-row={true}
           className={`grid grid-cols-[32px_1fr_100px_120px_100px] gap-4 px-4 py-3 items-center cursor-pointer hover:bg-surface-hover transition-colors group ${
             selectedIds.has(file.id) ? "bg-accent/10" : ""
           }`}
@@ -166,7 +177,7 @@ export function FileList({
           <input
             type="checkbox"
             checked={selectedIds.has(file.id)}
-            onChange={() => onSelect(file.id, false)}
+            onChange={() => onSelect(file.id, false, { ctrl: true })}
             onClick={(e) => e.stopPropagation()}
             className="rounded border-border text-accent focus:ring-accent"
           />

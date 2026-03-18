@@ -8,6 +8,8 @@ interface MoveModalProps {
   title: string;
   folderTree: FolderTreeNode[];
   excludeFolderId?: string | null;
+  /** When moving multiple folders, pass all selected folder IDs to exclude them and their descendants. */
+  excludeFolderIds?: string[] | null;
 }
 
 function collectDescendantIds(node: FolderTreeNode): Set<string> {
@@ -61,6 +63,7 @@ export function MoveModal({
   title,
   folderTree,
   excludeFolderId,
+  excludeFolderIds,
 }: MoveModalProps) {
   function findNode(nodes: FolderTreeNode[], id: string): FolderTreeNode | null {
     for (const n of nodes) {
@@ -74,6 +77,12 @@ export function MoveModal({
   if (excludeFolderId) {
     const node = findNode(folderTree, excludeFolderId);
     if (node) for (const id of collectDescendantIds(node)) excludeIds.add(id);
+  }
+  if (excludeFolderIds?.length) {
+    for (const folderId of excludeFolderIds) {
+      const node = findNode(folderTree, folderId);
+      if (node) for (const id of collectDescendantIds(node)) excludeIds.add(id);
+    }
   }
 
   const handleSelect = (id: string | null) => {

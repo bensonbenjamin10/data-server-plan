@@ -71,6 +71,7 @@ export function FileGrid({
           onDragStart={onDrop ? (e) => handleDragStart(e as unknown as React.DragEvent, folder.id, true) : undefined}
           onDragOver={onDrop ? handleDragOver : undefined}
           onDrop={onDrop ? (e) => handleDrop(e as unknown as React.DragEvent, folder.id) : undefined}
+          data-file-explorer-row={true}
           className={`p-4 rounded-lg border cursor-pointer hover:bg-surface-hover transition-colors text-center relative group bg-surface ${
             selectedIds.has(folder.id)
               ? "border-accent bg-accent/10"
@@ -83,7 +84,7 @@ export function FileGrid({
           <input
             type="checkbox"
             checked={selectedIds.has(folder.id)}
-            onChange={() => onSelect(folder.id, true)}
+            onChange={() => onSelect(folder.id, true, { ctrl: true })}
             onClick={(e) => e.stopPropagation()}
             className="absolute top-2 left-2 rounded border-border text-accent focus:ring-accent"
           />
@@ -107,6 +108,7 @@ export function FileGrid({
           key={file.id}
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
+          data-file-explorer-row={true}
           className={`p-4 rounded-lg border cursor-pointer hover:bg-surface-hover transition-colors text-center group relative bg-surface ${
             selectedIds.has(file.id)
               ? "border-accent bg-accent/10"
@@ -123,7 +125,7 @@ export function FileGrid({
           <input
             type="checkbox"
             checked={selectedIds.has(file.id)}
-            onChange={() => onSelect(file.id, false)}
+            onChange={() => onSelect(file.id, false, { ctrl: true })}
             onClick={(e) => e.stopPropagation()}
             className="absolute top-2 left-2 rounded border-border text-accent focus:ring-accent"
           />

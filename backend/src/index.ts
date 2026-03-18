@@ -18,6 +18,8 @@ import { logger } from "./lib/logger.js";
 const app = express();
 const PORT = process.env.PORT ?? 3001;
 
+app.set("trust proxy", 1);
+
 // Security headers (configured for cross-origin API access)
 app.use(
   helmet({

@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
@@ -50,10 +50,10 @@ export function Files() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const lastSelectedIdRef = useRef<string | null>(null);
 
-  useKeyboardShortcuts({
-    onUpload: () => fileInputRef.current?.click(),
-    onEscape: () => setSelectedIds(new Set()),
-  });
+  useEffect(() => {
+    setSelectedIds(new Set());
+    lastSelectedIdRef.current = null;
+  }, [folderId]);
 
   const { data: filesData } = useQuery({
     queryKey: ["files", folderId || null],
@@ -139,6 +139,14 @@ export function Files() {
   const handleSelectAll = useCallback((checked: boolean) => {
     setSelectedIds(checked ? new Set(orderedIds) : new Set());
   }, [orderedIds]);
+
+  useKeyboardShortcuts({
+    onUpload: () => fileInputRef.current?.click(),
+    onEscape: () => setSelectedIds(new Set()),
+    onSelectAll: () => {
+      if (orderedIds.length > 0) handleSelectAll(true);
+    },
+  });
 
   const selectedFiles = sortedFiles.filter((f) => selectedIds.has(f.id));
   const selectedFolders = sortedFolders.filter((f) => selectedIds.has(f.id));
@@ -510,8 +518,14 @@ export function Files() {
               Drag and drop files above or click to upload
             </p>
           </div>
-        ) : (
-          viewMode === "list" ? (
+        ) : viewMode === "list" ? (
+          <div
+            onClick={(e) => {
+              if (!(e.target as HTMLElement).closest("[data-file-explorer-row]")) {
+                setSelectedIds(new Set());
+              }
+            }}
+          >
             <FileList
               files={sortedFiles}
               folders={sortedFolders}
@@ -530,25 +544,46 @@ export function Files() {
               currentFolderId={folderId ?? null}
               onContextMenu={handleContextMenu}
             />
-          ) : (
-            <FileGrid
-              files={sortedFiles}
-              folders={sortedFolders}
-              selectedIds={selectedIds}
-              onSelect={handleSelect}
-              onDoubleClick={handleDoubleClick}
-              onDownload={handleDownload}
-              onDelete={handleDelete}
-              onRename={handleRenameFile}
-              onRenameFolder={handleRenameFolder}
-              onMove={handleMoveFile}
-              onMoveFolder={handleMoveFolder}
-              onDeleteFolder={handleDeleteFolder}
-              onDrop={handleDrop}
-              currentFolderId={folderId ?? null}
-              onContextMenu={handleContextMenu}
-            />
-          )
+          </div>
+        ) : (
+          <div className="space-y-2">
+            <div className="flex items-center gap-2 px-1">
+              <label className="flex items-center gap-2 text-sm text-text-muted cursor-pointer hover:text-text">
+                <input
+                  type="checkbox"
+                  checked={orderedIds.length > 0 && orderedIds.every((id) => selectedIds.has(id))}
+                  onChange={(e) => handleSelectAll(e.target.checked)}
+                  className="rounded border-border text-accent focus:ring-accent"
+                />
+                Select all
+              </label>
+            </div>
+            <div
+              onClick={(e) => {
+                if (!(e.target as HTMLElement).closest("[data-file-explorer-row]")) {
+                  setSelectedIds(new Set());
+                }
+              }}
+            >
+              <FileGrid
+                files={sortedFiles}
+                folders={sortedFolders}
+                selectedIds={selectedIds}
+                onSelect={handleSelect}
+                onDoubleClick={handleDoubleClick}
+                onDownload={handleDownload}
+                onDelete={handleDelete}
+                onRename={handleRenameFile}
+                onRenameFolder={handleRenameFolder}
+                onMove={handleMoveFile}
+                onMoveFolder={handleMoveFolder}
+                onDeleteFolder={handleDeleteFolder}
+                onDrop={handleDrop}
+                currentFolderId={folderId ?? null}
+                onContextMenu={handleContextMenu}
+              />
+            </div>
+          </div>
         )}
 
         {contextMenu && (
@@ -558,7 +593,39 @@ export function Files() {
             isOpen={!!contextMenu}
             onClose={() => setContextMenu(null)}
           >
-            {contextMenu.item.isFolder ? (
+            {selectedIds.size > 1 && selectedIds.has(contextMenu.item.id) ? (
+              <>
+                {selectedFiles.length > 0 && (
+                  <button
+                    onClick={() => {
+                      handleBulkDownload();
+                      setContextMenu(null);
+                    }}
+                    className="w-full px-4 py-2 text-left text-sm hover:bg-surface-hover"
+                  >
+                    Download selected
+                  </button>
+                )}
+                <button
+                  onClick={() => {
+                    setBulkMoveOpen(true);
+                    setContextMenu(null);
+                  }}
+                  className="w-full px-4 py-2 text-left text-sm hover:bg-surface-hover"
+                >
+                  Move selected
+                </button>
+                <button
+                  onClick={() => {
+                    setBulkDeleteOpen(true);
+                    setContextMenu(null);
+                  }}
+                  className="w-full px-4 py-2 text-left text-sm text-error hover:bg-surface-hover"
+                >
+                  Delete selected
+                </button>
+              </>
+            ) : contextMenu.item.isFolder ? (
               <>
                 <button
                   onClick={() => {
@@ -732,6 +799,7 @@ export function Files() {
             onConfirm={handleBulkMoveConfirm}
             title="Move selected"
             folderTree={folderTree}
+            excludeFolderIds={selectedFolders.map((f) => f.id)}
           />
         )}
 
