@@ -1,0 +1,5 @@
+# Nixpacks config for backend (Root Directory = backend)
+# Use --omit=dev instead of deprecated --production for install (fixes npm warn)
+
+[phases.install]
+cmds = ["npm install --omit=dev"]

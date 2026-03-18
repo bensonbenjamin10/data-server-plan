@@ -18,6 +18,7 @@ import { logger } from "./lib/logger.js";
 const app = express();
 const PORT = process.env.PORT ?? 3001;
 
+// Required when behind a proxy (e.g. Railway); otherwise express-rate-limit throws ERR_ERL_UNEXPECTED_X_FORWARDED_FOR
 app.set("trust proxy", 1);
 
 // Security headers (configured for cross-origin API access)
@@ -65,13 +66,16 @@ app.use((req, _res, next) => {
   next();
 });
 
-// Rate limiting
+// Rate limiting (validate.xForwardedForHeader: false avoids throw when trust proxy is not yet applied in some deploy environments)
+const rateLimitValidate = { xForwardedForHeader: false as const };
+
 const globalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 200,
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: "Too many requests, please try again later." },
+  validate: rateLimitValidate,
 });
 app.use(globalLimiter);
 
@@ -81,6 +85,7 @@ const authLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: "Too many authentication attempts, please try again later." },
+  validate: rateLimitValidate,
 });
 app.use("/api/auth/sign-in", authLimiter);
 app.use("/api/auth/sign-up", authLimiter);
@@ -92,6 +97,7 @@ const uploadLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: "Too many upload requests, please try again later." },
+  validate: rateLimitValidate,
 });
 app.use("/api/upload", uploadLimiter);
 
