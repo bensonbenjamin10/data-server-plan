@@ -1,5 +1,5 @@
 import { Router, type Request } from "express";
-import rateLimit from "express-rate-limit";
+import rateLimit, { ipKeyGenerator } from "express-rate-limit";
 import { z } from "zod";
 import { logger } from "../lib/logger.js";
 import {
@@ -82,7 +82,8 @@ function uploadRateLimitKey(req: Request): string {
   const a = (req as any).auth;
   if (a?.userId) return `user:${a.userId}`;
   if (a?.orgId) return `org:${a.orgId}`;
-  return `ip:${req.ip ?? (req.socket?.remoteAddress as string) ?? "unknown"}`;
+  const ip = req.ip ?? (req.socket?.remoteAddress as string) ?? "unknown";
+  return `ip:${ipKeyGenerator(ip)}`;
 }
 
 /** Normalize path so comparison works whether Express gives "/presign" or "presign". */
