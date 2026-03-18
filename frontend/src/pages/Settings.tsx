@@ -157,8 +157,8 @@ export function Settings() {
                   <div className="space-y-4">
                     <ProgressBar
                       value={breakdown.totalSize}
-                      max={10 * 1024 * 1024 * 1024}
-                      label={`${formatSize(breakdown.totalSize)} of 10 GB used`}
+                      max={5 * 1024 * 1024 * 1024 * 1024}
+                      label={`${formatSize(breakdown.totalSize)} of 5 TB used`}
                       showPercentage
                       size="lg"
                     />

@@ -11,6 +11,7 @@ import { ResetPasswordPage } from "./pages/ResetPasswordPage";
 import { AcceptInvitePage } from "./pages/AcceptInvitePage";
 import { VerifyEmailPage } from "./pages/VerifyEmailPage";
 import { RequestAccessPage } from "./pages/RequestAccessPage";
+import { Trash } from "./pages/Trash";
 import { useAuth } from "./lib/auth-context";
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -51,6 +52,7 @@ export default function App() {
         <Route index element={<Dashboard />} />
         <Route path="files" element={<Files />} />
         <Route path="files/:folderId" element={<Files />} />
+        <Route path="trash" element={<Trash />} />
         <Route path="settings" element={<Settings />} />
         <Route path="profile" element={<Profile />} />
         <Route path="organization" element={<Organization />} />

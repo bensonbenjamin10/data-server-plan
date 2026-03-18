@@ -195,7 +195,7 @@ export function Organization() {
     }
   }
 
-  const storageQuota = orgData?.storageQuota || 5 * 1024 * 1024 * 1024;
+  const storageQuota = orgData?.storageQuota || 5 * 1024 * 1024 * 1024 * 1024;
 
   return (
     <div className="p-6 lg:p-8 max-w-5xl">

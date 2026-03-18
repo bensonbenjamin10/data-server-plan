@@ -10,7 +10,7 @@ datasource db {
 model Organization {
   id           String   @id @default(cuid())
   name         String
-  storageQuota BigInt   @default(5368709120) @map("storage_quota")
+  storageQuota BigInt   @default(5497558138880) @map("storage_quota")
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 

@@ -13,11 +13,28 @@ import { UploadProgress } from "@/components/upload/UploadProgress";
 import { FileList } from "@/components/files/FileList";
 import { FileGrid } from "@/components/files/FileGrid";
 import { BulkActionBar } from "@/components/files/BulkActionBar";
-import { ConfirmModal, PromptModal } from "@/components/ui/Modal";
+import { ConfirmModal, Modal, PromptModal } from "@/components/ui/Modal";
 import { MoveModal } from "@/components/ui/MoveModal";
 import { ContextMenu } from "@/components/ui/ContextMenu";
 import { FilePreviewModal } from "@/components/files/FilePreviewModal";
 import type { FileRecord } from "@/lib/api";
+
+function formatSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)} GB`;
+}
+
+function formatVersionDate(iso: string): string {
+  return new Date(iso).toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
 
 export function Files() {
   const { folderId } = useParams();
@@ -41,6 +58,7 @@ export function Files() {
   const [bulkMoveOpen, setBulkMoveOpen] = useState(false);
   const [createFolderOpen, setCreateFolderOpen] = useState(false);
   const [previewFile, setPreviewFile] = useState<{ id: string; name: string; mimeType: string | null; url: string } | null>(null);
+  const [versionHistoryFile, setVersionHistoryFile] = useState<FileRecord | null>(null);
   const [contextMenu, setContextMenu] = useState<{
     x: number;
     y: number;
@@ -76,6 +94,12 @@ export function Files() {
     queryFn: () => api.getFolderTree(),
   });
   const folderTree = folderTreeData?.tree ?? [];
+
+  const { data: versionsData } = useQuery({
+    queryKey: ["file-versions", versionHistoryFile?.id],
+    queryFn: () => api.getFileVersions(versionHistoryFile!.id),
+    enabled: !!versionHistoryFile,
+  });
 
   const {
     upload,
@@ -688,6 +712,15 @@ export function Files() {
                   </button>
                   <button
                     onClick={() => {
+                      setVersionHistoryFile(contextMenu.file!);
+                      setContextMenu(null);
+                    }}
+                    className="w-full px-4 py-2 text-left text-sm hover:bg-surface-hover"
+                  >
+                    Version history
+                  </button>
+                  <button
+                    onClick={() => {
                       setFileToRename(contextMenu.file!);
                       setContextMenu(null);
                     }}
@@ -810,6 +843,72 @@ export function Files() {
           fileName={previewFile?.name ?? ""}
           mimeType={previewFile?.mimeType ?? null}
         />
+
+        <Modal
+          isOpen={!!versionHistoryFile}
+          onClose={() => setVersionHistoryFile(null)}
+          title={versionHistoryFile ? `Version history: ${versionHistoryFile.name}` : "Version history"}
+        >
+          <div className="max-h-[60vh] overflow-y-auto">
+            {!versionsData?.versions.length ? (
+              <p className="text-sm text-text-muted">
+                {versionsData ? "No versions yet." : "Loading…"}
+              </p>
+            ) : (
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border text-left text-text-muted">
+                    <th className="py-2 pr-4">Version</th>
+                    <th className="py-2 pr-4">Date</th>
+                    <th className="py-2 pr-4">Size</th>
+                    <th className="py-2 pr-4">Uploaded by</th>
+                    <th className="py-2"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {versionsData.versions.map((v) => (
+                    <tr key={v.id} className="border-b border-border/50">
+                      <td className="py-2 pr-4">
+                        v{v.version}
+                        {v.version === versionsData.versions[0]?.version && (
+                          <span className="ml-1.5 text-xs text-text-muted">(current)</span>
+                        )}
+                      </td>
+                      <td className="py-2 pr-4">{formatVersionDate(v.createdAt)}</td>
+                      <td className="py-2 pr-4">{formatSize(v.size)}</td>
+                      <td className="py-2 pr-4">{v.uploadedBy?.email ?? "—"}</td>
+                      <td className="py-2">
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            if (!versionHistoryFile) return;
+                            try {
+                              const { url } = await api.getVersionDownloadUrl(versionHistoryFile.id, v.id);
+                              const res = await fetch(url);
+                              if (!res.ok) throw new Error("Download failed");
+                              const blob = await res.blob();
+                              const a = document.createElement("a");
+                              a.href = URL.createObjectURL(blob);
+                              a.download = versionHistoryFile.name;
+                              a.click();
+                              URL.revokeObjectURL(a.href);
+                              showToast("Download started", "success");
+                            } catch {
+                              showToast("Failed to download version", "error");
+                            }
+                          }}
+                          className="text-accent hover:underline"
+                        >
+                          Download
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </Modal>
       </motion.div>
     </div>
   );

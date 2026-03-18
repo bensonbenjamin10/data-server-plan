@@ -193,6 +193,26 @@ export function createApi(getToken: () => Promise<string | null>) {
     return res.json() as Promise<{ url: string; name: string }>;
   },
 
+  async getFileVersions(fileId: string) {
+    const res = await fetchWithAuth(`/files/${fileId}/versions`);
+    if (!res.ok) throw new Error(await res.text());
+    return res.json() as Promise<{
+      versions: Array<{
+        id: string;
+        version: number;
+        size: number;
+        createdAt: string;
+        uploadedBy: { email: string } | null;
+      }>;
+    }>;
+  },
+
+  async getVersionDownloadUrl(fileId: string, versionId: string) {
+    const res = await fetchWithAuth(`/files/${fileId}/versions/${versionId}/download`);
+    if (!res.ok) throw new Error(await res.text());
+    return res.json() as Promise<{ url: string }>;
+  },
+
   async updateFile(fileId: string, data: { name?: string; folderId?: string | null }) {
     const res = await fetchWithAuth(`/files/${fileId}`, {
       method: "PATCH",

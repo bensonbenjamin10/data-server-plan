@@ -8,6 +8,7 @@ import { ProgressBar } from "@/components/ui/ProgressBar";
 import {
   LayoutDashboard,
   FolderOpen,
+  Trash2,
   Settings,
   Building2,
   User,
@@ -26,6 +27,7 @@ interface NavItem {
 const mainNav: NavItem[] = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard, end: true },
   { to: "/files", label: "Files", icon: FolderOpen },
+  { to: "/trash", label: "Trash", icon: Trash2, end: true },
 ];
 
 const accountNav: NavItem[] = [
@@ -47,9 +49,9 @@ export function Sidebar() {
   const isFilesSection = location.pathname.startsWith("/files");
   const [collapsed, setCollapsed] = useState(false);
 
-  const { data: stats } = useQuery({
-    queryKey: ["files", "stats"],
-    queryFn: () => api.getFileStats(),
+  const { data: storageInfo } = useQuery({
+    queryKey: ["storage"],
+    queryFn: () => api.getStorageInfo(),
     staleTime: 60000,
   });
 
@@ -135,16 +137,16 @@ export function Sidebar() {
       </nav>
 
       {/* Storage Mini-bar */}
-      {!collapsed && stats && (
+      {!collapsed && storageInfo && (
         <div className="px-4 py-3 border-t border-border">
           <ProgressBar
-            value={stats.totalSize}
-            max={10 * 1024 * 1024 * 1024}
+            value={storageInfo.used}
+            max={Math.max(storageInfo.quota, 1)}
             size="sm"
             colorMode="accent"
           />
           <p className="text-[11px] text-text-muted mt-1.5">
-            {formatSize(stats.totalSize)} of 10 GB
+            {formatSize(storageInfo.used)} of {formatSize(storageInfo.quota)}
           </p>
         </div>
       )}

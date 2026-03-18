@@ -70,7 +70,7 @@ function getUserId(req: import("express").Request): string | null {
 
 async function checkStorageQuota(orgId: string, additionalBytes: number): Promise<{ allowed: boolean; used: number; quota: number }> {
   const org = await prisma.organization.findUnique({ where: { id: orgId }, select: { storageQuota: true } });
-  const quota = Number(org?.storageQuota ?? 5368709120);
+  const quota = Number(org?.storageQuota ?? 5497558138880);
   const sizeResult = await prisma.file.aggregate({ where: { orgId, deletedAt: null }, _sum: { size: true } });
   const used = sizeResult._sum.size ?? 0;
   return { allowed: used + additionalBytes <= quota, used, quota };
@@ -85,6 +85,14 @@ function uploadRateLimitKey(req: Request): string {
   return `ip:${req.ip ?? (req.socket?.remoteAddress as string) ?? "unknown"}`;
 }
 
+/** Normalize path so comparison works whether Express gives "/presign" or "presign". */
+function uploadRoutePath(req: Request): string {
+  const p = req.path ?? "";
+  return p.startsWith("/") ? p : `/${p}`;
+}
+
+const UPLOAD_START_PATHS = ["/presign", "/multipart/create"];
+
 const uploadStartLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 20,
@@ -93,7 +101,7 @@ const uploadStartLimiter = rateLimit({
   message: { error: "Too many uploads started. Please try again later." },
   validate: rateLimitValidate,
   keyGenerator: uploadRateLimitKey,
-  skip: (req) => req.path !== "/presign" && req.path !== "/multipart/create",
+  skip: (req) => !UPLOAD_START_PATHS.includes(uploadRoutePath(req)),
 });
 
 const presignPartLimiter = rateLimit({
@@ -104,7 +112,7 @@ const presignPartLimiter = rateLimit({
   message: { error: "Too many upload requests, please try again later." },
   validate: rateLimitValidate,
   keyGenerator: uploadRateLimitKey,
-  skip: (req) => req.path === "/presign" || req.path === "/multipart/create",
+  skip: (req) => UPLOAD_START_PATHS.includes(uploadRoutePath(req)),
 });
 
 uploadRoutes.use(jwtMiddlewareWithDevBypass());
@@ -160,6 +168,15 @@ uploadRoutes.post("/complete", async (req, res) => {
         uploadedById: userId || null,
       },
     });
+    await prisma.fileVersion.create({
+      data: {
+        fileId: file.id,
+        version: 1,
+        r2Key: file.r2Key,
+        size: file.size,
+        uploadedById: userId || null,
+      },
+    });
     logAuditEvent({ orgId, userId, action: "file.upload", resource: "file", resourceId: file.id, metadata: { name: file.name, size: file.size, mimeType: file.mimeType }, req });
     res.status(201).json(file);
   } catch (err) {
@@ -182,7 +199,9 @@ uploadRoutes.post("/multipart/create", async (req, res) => {
       return;
     }
     const body = multipartCreateSchema.parse(req.body);
-    const count = await prisma.multipartUpload.count({ where: { orgId } });
+    const count = await prisma.multipartUpload.count({
+      where: { orgId, expiresAt: { gt: new Date() } },
+    });
     if (count >= MAX_CONCURRENT_MULTIPART_UPLOADS_PER_ORG) {
       res.status(429).json({
         error: "Too many concurrent uploads. Please complete or cancel an upload before starting another.",
@@ -263,6 +282,15 @@ uploadRoutes.post("/multipart/complete", async (req, res) => {
         r2Key: body.key,
         size: body.size,
         mimeType: body.mimeType || null,
+        uploadedById: userId || null,
+      },
+    });
+    await prisma.fileVersion.create({
+      data: {
+        fileId: file.id,
+        version: 1,
+        r2Key: file.r2Key,
+        size: file.size,
         uploadedById: userId || null,
       },
     });
