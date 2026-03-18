@@ -56,7 +56,8 @@ app.use(
     credentials: true,
   })
 );
-app.use(express.json());
+// 2mb allows multipart/complete with many parts (e.g. 10k parts ≈ 50GB file) without 413
+app.use(express.json({ limit: "2mb" }));
 app.use(cookieParser());
 
 // Request ID middleware
@@ -90,16 +91,6 @@ const authLimiter = rateLimit({
 app.use("/api/auth/sign-in", authLimiter);
 app.use("/api/auth/sign-up", authLimiter);
 app.use("/api/auth/forgot-password", authLimiter);
-
-const uploadLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 60,
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: { error: "Too many upload requests, please try again later." },
-  validate: rateLimitValidate,
-});
-app.use("/api/upload", uploadLimiter);
 
 // Routes
 app.use("/api/auth", authRoutes);

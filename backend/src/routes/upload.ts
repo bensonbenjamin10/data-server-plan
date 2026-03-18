@@ -1,4 +1,5 @@
-import { Router } from "express";
+import { Router, type Request } from "express";
+import rateLimit from "express-rate-limit";
 import { z } from "zod";
 import { logger } from "../lib/logger.js";
 import {
@@ -75,9 +76,42 @@ async function checkStorageQuota(orgId: string, additionalBytes: number): Promis
   return { allowed: used + additionalBytes <= quota, used, quota };
 }
 
+const rateLimitValidate = { xForwardedForHeader: false as const };
+
+function uploadRateLimitKey(req: Request): string {
+  const a = (req as any).auth;
+  if (a?.userId) return `user:${a.userId}`;
+  if (a?.orgId) return `org:${a.orgId}`;
+  return `ip:${req.ip ?? (req.socket?.remoteAddress as string) ?? "unknown"}`;
+}
+
+const uploadStartLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Too many uploads started. Please try again later." },
+  validate: rateLimitValidate,
+  keyGenerator: uploadRateLimitKey,
+  skip: (req) => req.path !== "/presign" && req.path !== "/multipart/create",
+});
+
+const presignPartLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 2000,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Too many upload requests, please try again later." },
+  validate: rateLimitValidate,
+  keyGenerator: uploadRateLimitKey,
+  skip: (req) => req.path === "/presign" || req.path === "/multipart/create",
+});
+
 uploadRoutes.use(jwtMiddlewareWithDevBypass());
 uploadRoutes.use(requireAuthWithDevBypass());
 uploadRoutes.use(requireUpload);
+uploadRoutes.use(uploadStartLimiter);
+uploadRoutes.use(presignPartLimiter);
 
 uploadRoutes.post("/presign", async (req, res) => {
   try {
@@ -138,6 +172,8 @@ uploadRoutes.post("/complete", async (req, res) => {
   }
 });
 
+const MAX_CONCURRENT_MULTIPART_UPLOADS_PER_ORG = 10;
+
 uploadRoutes.post("/multipart/create", async (req, res) => {
   try {
     const orgId = getOrgId(req);
@@ -146,6 +182,13 @@ uploadRoutes.post("/multipart/create", async (req, res) => {
       return;
     }
     const body = multipartCreateSchema.parse(req.body);
+    const count = await prisma.multipartUpload.count({ where: { orgId } });
+    if (count >= MAX_CONCURRENT_MULTIPART_UPLOADS_PER_ORG) {
+      res.status(429).json({
+        error: "Too many concurrent uploads. Please complete or cancel an upload before starting another.",
+      });
+      return;
+    }
     const uploadId = await createMultipartUpload(body.key);
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
     await prisma.multipartUpload.upsert({
