@@ -5,6 +5,7 @@ import { uploadRoutes } from "./routes/upload.js";
 import { filesRoutes } from "./routes/files.js";
 import { foldersRoutes } from "./routes/folders.js";
 import { searchRoutes } from "./routes/search.js";
+import { orgRoutes } from "./routes/org.js";
 import { checkR2Connection } from "./services/r2.js";
 import { prisma } from "./db/index.js";
 
@@ -45,6 +46,7 @@ app.use("/api/upload", uploadRoutes);
 app.use("/api/files", filesRoutes);
 app.use("/api/folders", foldersRoutes);
 app.use("/api/search", searchRoutes);
+app.use("/api/org", orgRoutes);
 
 app.get("/health", (_req, res) => {
   res.json({ status: "ok" });

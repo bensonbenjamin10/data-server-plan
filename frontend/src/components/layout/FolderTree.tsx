@@ -4,6 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import { useApi } from "@/lib/api-context";
 import { useToast } from "@/components/ui/Toast";
+import { Folder, FolderOpen, ChevronDown, ChevronRight } from "lucide-react";
 import type { FolderTreeNode } from "@/lib/api";
 
 function FolderTreeItem({
@@ -52,19 +53,20 @@ function FolderTreeItem({
           className="w-5 h-6 flex items-center justify-center shrink-0 text-text-muted hover:text-text"
         >
           {hasChildren ? (
-            <span className="text-xs">{isExpanded ? "▾" : "▸"}</span>
+            isExpanded ? <ChevronDown size={13} /> : <ChevronRight size={13} />
           ) : (
-            <span className="w-2" />
+            <span className="w-3" />
           )}
         </button>
         <Link
           to={`/files/${node.id}`}
-          className={`flex-1 min-w-0 py-1.5 px-2 rounded text-sm truncate ${
+          className={`flex-1 min-w-0 py-1.5 px-2 rounded text-sm truncate flex items-center gap-1.5 ${
             isActive
               ? "bg-accent/10 text-accent font-medium"
               : "text-text-muted hover:text-text hover:bg-surface-hover"
           }`}
         >
+          {isExpanded && hasChildren ? <FolderOpen size={14} className="shrink-0" /> : <Folder size={14} className="shrink-0" />}
           {node.name}
         </Link>
       </div>
@@ -156,8 +158,9 @@ export function FolderTree() {
       <div
         onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; }}
         onDrop={handleDropRoot}
-        className="py-1.5 px-2 rounded text-sm text-text-muted hover:bg-surface-hover"
+        className="py-1.5 px-2 rounded text-sm text-text-muted hover:bg-surface-hover flex items-center gap-1.5"
       >
+        <Folder size={14} className="shrink-0" />
         Root
       </div>
       {tree.map((node) => (

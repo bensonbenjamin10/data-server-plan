@@ -14,6 +14,8 @@ export default {
         background: "var(--color-background)",
         surface: "var(--color-surface)",
         "surface-hover": "var(--color-surface-hover)",
+        "surface-elevated": "var(--color-surface-elevated)",
+        "accent-subtle": "var(--color-accent-subtle)",
         border: "var(--color-border)",
         "border-subtle": "var(--color-border-subtle)",
         text: "var(--color-text)",

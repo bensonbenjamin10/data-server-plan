@@ -136,6 +136,87 @@ authRoutes.get("/me", jwtMiddleware(), requireAuth(), async (req, res) => {
   });
 });
 
+authRoutes.get("/profile", jwtMiddleware(), requireAuth(), async (req, res) => {
+  try {
+    const auth = (req as any).auth;
+    const user = await prisma.user.findUnique({
+      where: { id: auth.userId },
+      select: { id: true, email: true, createdAt: true },
+    });
+    if (!user) {
+      res.status(404).json({ error: "User not found" });
+      return;
+    }
+    const orgs = await getOrgsForUser(auth.userId);
+    const [filesUploaded, sizeResult] = await Promise.all([
+      prisma.file.count({ where: { uploadedById: auth.userId } }),
+      prisma.file.aggregate({
+        where: { uploadedById: auth.userId },
+        _sum: { size: true },
+      }),
+    ]);
+    res.json({
+      id: user.id,
+      email: user.email,
+      createdAt: user.createdAt.toISOString(),
+      orgs,
+      filesUploaded,
+      totalStorageUsed: sizeResult._sum.size ?? 0,
+    });
+  } catch (err) {
+    console.error("[auth/profile]", err);
+    res.status(500).json({ error: "Failed to get profile" });
+  }
+});
+
+authRoutes.patch("/profile", jwtMiddleware(), requireAuth(), async (req, res) => {
+  try {
+    const auth = (req as any).auth;
+    const { email, currentPassword, newPassword } = req.body;
+
+    const user = await prisma.user.findUnique({ where: { id: auth.userId } });
+    if (!user) {
+      res.status(404).json({ error: "User not found" });
+      return;
+    }
+
+    const data: { email?: string; passwordHash?: string } = {};
+
+    if (email && email !== user.email) {
+      const existing = await prisma.user.findUnique({ where: { email: email.toLowerCase() } });
+      if (existing) {
+        res.status(400).json({ error: "Email already in use" });
+        return;
+      }
+      data.email = email.toLowerCase();
+    }
+
+    if (newPassword) {
+      if (!currentPassword) {
+        res.status(400).json({ error: "Current password required" });
+        return;
+      }
+      const ok = await verifyPassword(currentPassword, user.passwordHash);
+      if (!ok) {
+        res.status(401).json({ error: "Current password is incorrect" });
+        return;
+      }
+      data.passwordHash = await hashPassword(newPassword);
+    }
+
+    if (Object.keys(data).length === 0) {
+      res.json({ message: "No changes" });
+      return;
+    }
+
+    await prisma.user.update({ where: { id: auth.userId }, data });
+    res.json({ message: "Profile updated" });
+  } catch (err) {
+    console.error("[auth/profile]", err);
+    res.status(500).json({ error: "Failed to update profile" });
+  }
+});
+
 authRoutes.post("/switch-org", jwtMiddleware(), requireAuth(), async (req, res) => {
   try {
     const body = switchOrgSchema.parse(req.body);

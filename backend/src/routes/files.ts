@@ -7,6 +7,21 @@ import { prisma } from "../db/index.js";
 
 export const filesRoutes = Router();
 
+function categorizeMime(mime: string | null): string {
+  if (!mime) return "other";
+  if (mime.startsWith("image/")) return "images";
+  if (mime.startsWith("video/")) return "videos";
+  if (mime.startsWith("audio/")) return "audio";
+  if (
+    mime.startsWith("text/") ||
+    mime === "application/pdf" ||
+    mime.includes("document") ||
+    mime.includes("spreadsheet") ||
+    mime.includes("presentation")
+  ) return "documents";
+  return "other";
+}
+
 const updateFileSchema = z.object({
   name: z.string().min(1).optional(),
   folderId: z.string().nullable().optional(),
@@ -42,6 +57,113 @@ filesRoutes.get("/", requireDownload, async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Failed to list files" });
+  }
+});
+
+filesRoutes.get("/dashboard-stats", requireDownload, async (req, res) => {
+  try {
+    const orgId = getOrgId(req);
+    if (!orgId) {
+      res.status(403).json({ error: "Organization context required" });
+      return;
+    }
+
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    const sixMonthsAgo = new Date();
+    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+
+    const [fileCount, folderCount, sizeResult, recentUploadsCount, allFiles] = await Promise.all([
+      prisma.file.count({ where: { orgId } }),
+      prisma.folder.count({ where: { orgId } }),
+      prisma.file.aggregate({ where: { orgId }, _sum: { size: true } }),
+      prisma.file.count({ where: { orgId, createdAt: { gte: sevenDaysAgo } } }),
+      prisma.file.findMany({
+        where: { orgId },
+        select: { mimeType: true, size: true, createdAt: true },
+      }),
+    ]);
+
+    const totalSize = sizeResult._sum.size ?? 0;
+
+    const typeMap: Record<string, { count: number; size: number }> = {};
+    const monthMap: Record<string, number> = {};
+
+    for (const f of allFiles) {
+      const cat = categorizeMime(f.mimeType);
+      if (!typeMap[cat]) typeMap[cat] = { count: 0, size: 0 };
+      typeMap[cat].count++;
+      typeMap[cat].size += f.size;
+
+      const month = `${f.createdAt.getFullYear()}-${String(f.createdAt.getMonth() + 1).padStart(2, "0")}`;
+      if (f.createdAt >= sixMonthsAgo) {
+        monthMap[month] = (monthMap[month] || 0) + f.size;
+      }
+    }
+
+    const filesByType = Object.entries(typeMap).map(([category, data]) => ({
+      category,
+      ...data,
+    }));
+
+    const storageTimeline = Object.entries(monthMap)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([month, size]) => ({ month, size }));
+
+    res.json({
+      fileCount,
+      folderCount,
+      totalSize,
+      recentUploads: recentUploadsCount,
+      filesByType,
+      storageTimeline,
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to get dashboard stats" });
+  }
+});
+
+filesRoutes.get("/storage-breakdown", requireDownload, async (req, res) => {
+  try {
+    const orgId = getOrgId(req);
+    if (!orgId) {
+      res.status(403).json({ error: "Organization context required" });
+      return;
+    }
+
+    const allFiles = await prisma.file.findMany({
+      where: { orgId },
+      select: { id: true, name: true, mimeType: true, size: true, createdAt: true },
+      orderBy: { size: "desc" },
+    });
+
+    const typeMap: Record<string, { count: number; size: number }> = {};
+    for (const f of allFiles) {
+      const cat = categorizeMime(f.mimeType);
+      if (!typeMap[cat]) typeMap[cat] = { count: 0, size: 0 };
+      typeMap[cat].count++;
+      typeMap[cat].size += f.size;
+    }
+
+    const byType = Object.entries(typeMap).map(([category, data]) => ({
+      category,
+      ...data,
+    }));
+
+    const largestFiles = allFiles.slice(0, 5).map((f) => ({
+      id: f.id,
+      name: f.name,
+      size: f.size,
+      mimeType: f.mimeType,
+    }));
+
+    const totalSize = allFiles.reduce((acc, f) => acc + f.size, 0);
+
+    res.json({ byType, largestFiles, totalSize, fileCount: allFiles.length });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to get storage breakdown" });
   }
 });
 

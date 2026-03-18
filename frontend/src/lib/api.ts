@@ -109,6 +109,77 @@ export function createApi(getToken: () => Promise<string | null>) {
     return res.json() as Promise<{ fileCount: number; totalSize: number }>;
   },
 
+  async getDashboardStats() {
+    const res = await fetchWithAuth("/files/dashboard-stats");
+    if (!res.ok) throw new Error(await res.text());
+    return res.json() as Promise<DashboardStats>;
+  },
+
+  async getStorageBreakdown() {
+    const res = await fetchWithAuth("/files/storage-breakdown");
+    if (!res.ok) throw new Error(await res.text());
+    return res.json() as Promise<StorageBreakdown>;
+  },
+
+  async getProfile() {
+    const res = await fetchWithAuth("/auth/profile");
+    if (!res.ok) throw new Error(await res.text());
+    return res.json() as Promise<UserProfile>;
+  },
+
+  async updateProfile(data: { email?: string; currentPassword?: string; newPassword?: string }) {
+    const res = await fetchWithAuth("/auth/profile", {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) throw new Error(await res.text());
+    return res.json();
+  },
+
+  async getOrg() {
+    const res = await fetchWithAuth("/org");
+    if (!res.ok) throw new Error(await res.text());
+    return res.json() as Promise<OrgDetails>;
+  },
+
+  async updateOrg(data: { name: string }) {
+    const res = await fetchWithAuth("/org", {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) throw new Error(await res.text());
+    return res.json();
+  },
+
+  async getOrgMembers() {
+    const res = await fetchWithAuth("/org/members");
+    if (!res.ok) throw new Error(await res.text());
+    return res.json() as Promise<{ members: OrgMemberRecord[] }>;
+  },
+
+  async inviteOrgMember(email: string, role: string) {
+    const res = await fetchWithAuth("/org/members/invite", {
+      method: "POST",
+      body: JSON.stringify({ email, role }),
+    });
+    if (!res.ok) throw new Error(await res.text());
+    return res.json();
+  },
+
+  async updateMemberRole(memberId: string, role: string) {
+    const res = await fetchWithAuth(`/org/members/${memberId}/role`, {
+      method: "PATCH",
+      body: JSON.stringify({ role }),
+    });
+    if (!res.ok) throw new Error(await res.text());
+    return res.json();
+  },
+
+  async removeMember(memberId: string) {
+    const res = await fetchWithAuth(`/org/members/${memberId}`, { method: "DELETE" });
+    if (!res.ok) throw new Error(await res.text());
+  },
+
   async getRecentFiles(limit?: number) {
     const qs = limit ? `?limit=${limit}` : "";
     const res = await fetchWithAuth(`/files/recent${qs}`);
@@ -214,4 +285,45 @@ export interface FolderTreeNode {
   path: string;
   parentId: string | null;
   children: FolderTreeNode[];
+}
+
+export interface DashboardStats {
+  fileCount: number;
+  folderCount: number;
+  totalSize: number;
+  recentUploads: number;
+  filesByType: Array<{ category: string; count: number; size: number }>;
+  storageTimeline: Array<{ month: string; size: number }>;
+}
+
+export interface StorageBreakdown {
+  byType: Array<{ category: string; count: number; size: number }>;
+  largestFiles: Array<{ id: string; name: string; size: number; mimeType: string | null }>;
+  totalSize: number;
+  fileCount: number;
+}
+
+export interface UserProfile {
+  id: string;
+  email: string;
+  createdAt: string;
+  orgs: Array<{ id: string; name: string; role: string }>;
+  filesUploaded: number;
+  totalStorageUsed: number;
+}
+
+export interface OrgDetails {
+  id: string;
+  name: string;
+  createdAt: string;
+  memberCount: number;
+  totalStorage: number;
+}
+
+export interface OrgMemberRecord {
+  id: string;
+  userId: string;
+  email: string;
+  role: string;
+  createdAt: string;
 }

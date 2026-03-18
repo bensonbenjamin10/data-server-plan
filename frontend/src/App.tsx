@@ -3,6 +3,8 @@ import { Layout } from "./components/layout/Layout";
 import { Files } from "./pages/Files";
 import { Dashboard } from "./pages/Dashboard";
 import { Settings } from "./pages/Settings";
+import { Profile } from "./pages/Profile";
+import { Organization } from "./pages/Organization";
 import { SignInPage } from "./pages/SignInPage";
 import { useAuth } from "./lib/auth-context";
 
@@ -11,7 +13,11 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="animate-pulse text-text-muted">Loading...</div>
+        <div className="flex flex-col items-center gap-3">
+          <div className="h-1 w-16 rounded-full bg-border overflow-hidden">
+            <div className="h-full w-8 bg-accent rounded-full animate-pulse" />
+          </div>
+        </div>
       </div>
     );
   }
@@ -37,6 +43,8 @@ export default function App() {
         <Route path="files" element={<Files />} />
         <Route path="files/:folderId" element={<Files />} />
         <Route path="settings" element={<Settings />} />
+        <Route path="profile" element={<Profile />} />
+        <Route path="organization" element={<Organization />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

@@ -4,6 +4,7 @@
   --color-background: #0f0f12;
   --color-surface: #18181b;
   --color-surface-hover: #1f1f23;
+  --color-surface-elevated: #222228;
 
   /* Borders */
   --color-border: #27272a;
@@ -16,6 +17,7 @@
   /* Accent - blue */
   --color-accent: #3b82f6;
   --color-accent-hover: #60a5fa;
+  --color-accent-subtle: rgba(59, 130, 246, 0.08);
 
   /* Semantic */
   --color-success: #22c55e;
@@ -43,4 +45,14 @@
 
   /* Focus ring */
   --ring-color: var(--color-accent);
+
+  /* Gradients */
+  --gradient-card: linear-gradient(135deg, rgba(59, 130, 246, 0.04), transparent 60%);
+  --gradient-surface: linear-gradient(180deg, var(--color-surface), var(--color-background));
+
+  /* Timing */
+  --ease-out: cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  --duration-fast: 150ms;
+  --duration-normal: 250ms;
+  --duration-slow: 400ms;
 }

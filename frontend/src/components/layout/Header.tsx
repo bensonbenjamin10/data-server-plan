@@ -1,7 +1,16 @@
 import { useState, useRef, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { SearchBar } from "./SearchBar";
 import { useAuth } from "@/lib/auth-context";
+import { Avatar } from "@/components/ui/Avatar";
+import {
+  ChevronDown,
+  User,
+  Building2,
+  Settings,
+  LogOut,
+  Bell,
+} from "lucide-react";
 
 export function Header() {
   const { user, org, orgs, signOut, switchOrg } = useAuth();
@@ -26,20 +35,25 @@ export function Header() {
   }, []);
 
   return (
-    <header className="h-14 border-b border-border bg-surface flex items-center justify-between px-6 shrink-0">
-      <div className="flex items-center gap-4">
+    <header className="h-14 border-b border-border bg-surface flex items-center justify-between px-5 shrink-0">
+      <div className="flex items-center gap-3">
         <SearchBar />
         {orgs.length > 0 && (
           <div className="relative" ref={orgRef}>
             <button
               type="button"
               onClick={() => setOrgOpen(!orgOpen)}
-              className="px-4 py-2 rounded-lg border border-border bg-surface-hover text-text text-sm font-medium hover:bg-surface-hover/80 focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 focus:ring-offset-background"
+              className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-border bg-surface-hover text-text text-sm font-medium hover:bg-border/30 focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 focus:ring-offset-background transition-colors"
             >
-              {org?.name || "Select org"}
+              <div className="flex h-5 w-5 items-center justify-center rounded bg-accent/15 text-accent">
+                <Building2 size={12} />
+              </div>
+              <span className="max-w-[120px] truncate">{org?.name || "Select org"}</span>
+              <ChevronDown size={14} className={`text-text-muted transition-transform ${orgOpen ? "rotate-180" : ""}`} />
             </button>
             {orgOpen && (
-              <div className="absolute top-full left-0 mt-1 py-1 rounded-lg border border-border bg-surface shadow-dropdown min-w-[180px] z-10">
+              <div className="absolute top-full left-0 mt-1 py-1 rounded-lg border border-border bg-surface shadow-dropdown min-w-[200px] z-10">
+                <p className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-text-muted/60">Organizations</p>
                 {orgs.map((o) => (
                   <button
                     key={o.id}
@@ -49,11 +63,16 @@ export function Header() {
                       setOrgOpen(false);
                       navigate("/files");
                     }}
-                    className={`w-full px-4 py-2 text-left text-sm hover:bg-surface-hover ${
+                    className={`w-full px-3 py-2 text-left text-sm flex items-center gap-2.5 hover:bg-surface-hover transition-colors ${
                       org?.id === o.id ? "bg-accent/10 text-accent font-medium" : "text-text"
                     }`}
                   >
-                    {o.name}
+                    <div className={`flex h-6 w-6 items-center justify-center rounded text-xs font-semibold ${
+                      org?.id === o.id ? "bg-accent/20 text-accent" : "bg-surface-hover text-text-muted"
+                    }`}>
+                      {o.name.charAt(0).toUpperCase()}
+                    </div>
+                    <span className="truncate">{o.name}</span>
                   </button>
                 ))}
               </div>
@@ -61,33 +80,71 @@ export function Header() {
           </div>
         )}
       </div>
-      <nav className="flex items-center gap-4">
+      <nav className="flex items-center gap-2">
+        {/* Notification bell placeholder */}
+        <button
+          type="button"
+          className="relative p-2 rounded-lg hover:bg-surface-hover text-text-muted transition-colors"
+          title="Notifications"
+        >
+          <Bell size={18} />
+        </button>
+
+        {/* User menu */}
         <div className="relative" ref={userRef}>
           <button
             type="button"
             onClick={() => setUserOpen(!userOpen)}
-            className="flex items-center gap-2 px-3 py-2 rounded-full bg-surface-hover hover:bg-surface-hover/80 text-text focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 focus:ring-offset-background"
+            className="flex items-center gap-2 p-1.5 rounded-lg hover:bg-surface-hover transition-colors focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 focus:ring-offset-background"
           >
-            <span className="w-8 h-8 rounded-full bg-accent/80 flex items-center justify-center text-white text-sm font-medium">
-              {user?.email?.[0]?.toUpperCase() || "?"}
-            </span>
+            <Avatar email={user?.email} size="sm" />
           </button>
           {userOpen && (
-            <div className="absolute top-full right-0 mt-1 py-1 rounded-lg border border-border bg-surface shadow-dropdown min-w-[180px] z-10">
-              <div className="px-4 py-2 text-sm text-text-muted border-b border-border">
-                {user?.email}
+            <div className="absolute top-full right-0 mt-1 rounded-lg border border-border bg-surface shadow-dropdown min-w-[200px] z-10 overflow-hidden">
+              <div className="px-3 py-3 border-b border-border">
+                <p className="text-sm font-medium text-text truncate">{user?.email}</p>
+                <p className="text-xs text-text-muted mt-0.5">{org?.name}</p>
               </div>
-              <button
-                type="button"
-                onClick={() => {
-                  signOut();
-                  setUserOpen(false);
-                  navigate("/sign-in");
-                }}
-                className="w-full px-4 py-2 text-left text-sm text-error hover:bg-error/10"
-              >
-                Sign out
-              </button>
+              <div className="py-1">
+                <Link
+                  to="/profile"
+                  onClick={() => setUserOpen(false)}
+                  className="flex items-center gap-2.5 px-3 py-2 text-sm text-text hover:bg-surface-hover transition-colors"
+                >
+                  <User size={15} className="text-text-muted" />
+                  Profile
+                </Link>
+                <Link
+                  to="/organization"
+                  onClick={() => setUserOpen(false)}
+                  className="flex items-center gap-2.5 px-3 py-2 text-sm text-text hover:bg-surface-hover transition-colors"
+                >
+                  <Building2 size={15} className="text-text-muted" />
+                  Organization
+                </Link>
+                <Link
+                  to="/settings"
+                  onClick={() => setUserOpen(false)}
+                  className="flex items-center gap-2.5 px-3 py-2 text-sm text-text hover:bg-surface-hover transition-colors"
+                >
+                  <Settings size={15} className="text-text-muted" />
+                  Settings
+                </Link>
+              </div>
+              <div className="border-t border-border py-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    signOut();
+                    setUserOpen(false);
+                    navigate("/sign-in");
+                  }}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-error hover:bg-error/10 transition-colors"
+                >
+                  <LogOut size={15} />
+                  Sign out
+                </button>
+              </div>
             </div>
           )}
         </div>
