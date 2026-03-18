@@ -11,6 +11,7 @@ import {
   HeadBucketCommand,
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import { logger } from "../lib/logger.js";
 
 const accountId = process.env.R2_ACCOUNT_ID;
 const accessKeyId = process.env.R2_ACCESS_KEY_ID;
@@ -21,9 +22,7 @@ const R2_CONFIGURED =
   !!(accountId && accessKeyId && secretAccessKey && bucketName);
 
 if (!R2_CONFIGURED) {
-  console.warn(
-    "[R2] Credentials not configured. Set R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET_NAME"
-  );
+  logger.warn("R2 credentials not configured. Set R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET_NAME");
 }
 
 const s3Client = new S3Client({
@@ -50,11 +49,11 @@ export async function checkR2Connection(): Promise<{
     await s3Client.send(
       new HeadBucketCommand({ Bucket: bucketName })
     );
-    console.log(`[R2] Connection OK: bucket=${bucketName} endpoint=${endpoint}`);
+    logger.info({ bucket: bucketName, endpoint }, "R2 connection OK");
     return { ok: true, bucket: bucketName!, endpoint };
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
-    console.error(`[R2] Connection failed:`, msg);
+    logger.error({ error: msg }, "R2 connection failed");
     return { ok: false, bucket: bucketName!, endpoint, error: msg };
   }
 }
@@ -71,7 +70,7 @@ export async function getPresignedPutUrl(
     ContentType: contentType,
   });
   const url = await getSignedUrl(s3Client, command, { expiresIn: PRESIGN_EXPIRY });
-  console.log(`[R2] Presigned PUT generated key=${key}`);
+  logger.debug({ key }, "R2 presigned PUT generated");
   return url;
 }
 
@@ -81,7 +80,7 @@ export async function getPresignedGetUrl(key: string): Promise<string> {
     Key: key,
   });
   const url = await getSignedUrl(s3Client, command, { expiresIn: PRESIGN_EXPIRY });
-  console.log(`[R2] Presigned GET generated key=${key}`);
+  logger.debug({ key }, "R2 presigned GET generated");
   return url;
 }
 
@@ -92,7 +91,7 @@ export async function createMultipartUpload(key: string): Promise<string> {
   });
   const result = await s3Client.send(command);
   if (!result.UploadId) throw new Error("Failed to create multipart upload");
-  console.log(`[R2] Multipart upload created key=${key} uploadId=${result.UploadId}`);
+  logger.debug({ key, uploadId: result.UploadId }, "R2 multipart upload created");
   return result.UploadId;
 }
 
@@ -131,7 +130,7 @@ export async function completeMultipartUpload(
     },
   });
   await s3Client.send(command);
-  console.log(`[R2] Multipart upload completed key=${key}`);
+  logger.debug({ key }, "R2 multipart upload completed");
 }
 
 export async function abortMultipartUpload(

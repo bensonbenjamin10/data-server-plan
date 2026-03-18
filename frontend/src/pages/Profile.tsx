@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useApi } from "@/lib/api-context";
 import { useAuth } from "@/lib/auth-context";
 import { Avatar } from "@/components/ui/Avatar";
@@ -9,7 +9,7 @@ import { SectionHeader } from "@/components/ui/SectionHeader";
 import { StatCard } from "@/components/ui/StatCard";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { useToast } from "@/components/ui/Toast";
-import { Files, HardDrive, Key, Building2 } from "lucide-react";
+import { Files, HardDrive, Key, Building2, Monitor, X } from "lucide-react";
 
 function formatSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
@@ -29,6 +29,75 @@ function getPasswordStrength(password: string): { label: string; color: string; 
   if (score <= 2) return { label: "Weak", color: "bg-warning", width: "w-2/5" };
   if (score <= 3) return { label: "Good", color: "bg-accent", width: "w-3/5" };
   return { label: "Strong", color: "bg-success", width: "w-full" };
+}
+
+function parseUserAgent(ua: string | null): string {
+  if (!ua) return "Unknown device";
+  if (ua.includes("Chrome")) return "Chrome";
+  if (ua.includes("Firefox")) return "Firefox";
+  if (ua.includes("Safari")) return "Safari";
+  if (ua.includes("Edge")) return "Edge";
+  return "Browser";
+}
+
+function SessionsSection() {
+  const api = useApi();
+  const queryClient = useQueryClient();
+  const { showToast } = useToast();
+
+  const { data, isLoading } = useQuery({
+    queryKey: ["sessions"],
+    queryFn: () => api.getSessions(),
+  });
+
+  const revokeMutation = useMutation({
+    mutationFn: (id: string) => api.revokeSession(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["sessions"] });
+      showToast("Session revoked", "success");
+    },
+    onError: (err: Error) => showToast(err.message, "error"),
+  });
+
+  return (
+    <div className="rounded-xl border border-border bg-surface overflow-hidden">
+      <div className="p-6 pb-0">
+        <SectionHeader title="Active Sessions" description="Devices currently signed in to your account" />
+      </div>
+      {isLoading ? (
+        <div className="p-6 space-y-3">
+          <Skeleton className="h-12 w-full" />
+          <Skeleton className="h-12 w-full" />
+        </div>
+      ) : data?.sessions && data.sessions.length > 0 ? (
+        <div className="divide-y divide-border">
+          {data.sessions.map((session) => (
+            <div key={session.id} className="px-6 py-4 flex items-center gap-4">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-background text-text-muted shrink-0">
+                <Monitor size={18} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-text">{parseUserAgent(session.userAgent)}</p>
+                <p className="text-xs text-text-muted">
+                  {session.ipAddress || "Unknown IP"} &middot; Since {new Date(session.createdAt).toLocaleDateString()}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => revokeMutation.mutate(session.id)}
+                className="p-1.5 rounded-md hover:bg-error/10 text-text-muted hover:text-error transition-colors"
+                title="Revoke session"
+              >
+                <X size={16} />
+              </button>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="p-6 text-sm text-text-muted">No active sessions</div>
+      )}
+    </div>
+  );
 }
 
 export function Profile() {
@@ -180,6 +249,9 @@ export function Profile() {
             </button>
           </form>
         </div>
+
+        {/* Active Sessions */}
+        <SessionsSection />
 
         {/* Organization Memberships */}
         <div className="rounded-xl border border-border bg-surface overflow-hidden">

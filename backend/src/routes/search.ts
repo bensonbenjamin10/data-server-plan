@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { logger } from "../lib/logger.js";
 import { jwtMiddlewareWithDevBypass, requireAuthWithDevBypass } from "../middleware/auth.js";
 import { requireDownload } from "../middleware/rbac.js";
 import { prisma } from "../db/index.js";
@@ -59,7 +60,7 @@ searchRoutes.get("/", requireDownload, async (req, res) => {
       })),
     });
   } catch (err) {
-    console.error(err);
+    logger.error({ err }, "Search failed");
     res.status(500).json({ error: "Search failed" });
   }
 });

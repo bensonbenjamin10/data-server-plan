@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/lib/auth-context";
 import { HardDrive, ArrowRight } from "lucide-react";
@@ -166,6 +166,13 @@ export function SignInPage() {
                 </motion.div>
               )}
             </AnimatePresence>
+            {mode === "sign-in" && (
+              <div className="text-right">
+                <Link to="/forgot-password" className="text-xs text-text-muted hover:text-accent transition-colors">
+                  Forgot password?
+                </Link>
+              </div>
+            )}
             <button
               type="submit"
               disabled={submitLoading}

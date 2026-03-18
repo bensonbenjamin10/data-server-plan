@@ -257,6 +257,154 @@ export function createApi(getToken: () => Promise<string | null>) {
       folders: Array<{ id: string; name: string; path: string; parentId: string | null }>;
     }>;
   },
+
+  // ── Invites ──
+
+  async getOrgInvites() {
+    const res = await fetchWithAuth("/org/invites");
+    if (!res.ok) throw new Error(await res.text());
+    return res.json() as Promise<{ invites: InviteRecord[] }>;
+  },
+
+  async revokeInvite(inviteId: string) {
+    const res = await fetchWithAuth(`/org/invites/${inviteId}`, { method: "DELETE" });
+    if (!res.ok) throw new Error(await res.text());
+  },
+
+  // ── Access Requests ──
+
+  async getAccessRequests(status?: string) {
+    const qs = status ? `?status=${status}` : "";
+    const res = await fetchWithAuth(`/org/access-requests${qs}`);
+    if (!res.ok) throw new Error(await res.text());
+    return res.json() as Promise<{ requests: AccessRequestRecord[] }>;
+  },
+
+  async approveAccessRequest(requestId: string, role?: string) {
+    const res = await fetchWithAuth(`/org/access-requests/${requestId}/approve`, {
+      method: "POST",
+      body: JSON.stringify({ role: role || "viewer" }),
+    });
+    if (!res.ok) throw new Error(await res.text());
+    return res.json();
+  },
+
+  async denyAccessRequest(requestId: string) {
+    const res = await fetchWithAuth(`/org/access-requests/${requestId}/deny`, { method: "POST" });
+    if (!res.ok) throw new Error(await res.text());
+    return res.json();
+  },
+
+  async searchOrgs(q: string) {
+    const res = await fetchWithAuth(`/org/search?q=${encodeURIComponent(q)}`);
+    if (!res.ok) throw new Error(await res.text());
+    return res.json() as Promise<{ organizations: Array<{ id: string; name: string }> }>;
+  },
+
+  async requestOrgAccess(orgId: string, message?: string) {
+    const res = await fetchWithAuth(`/org/${orgId}/request-access`, {
+      method: "POST",
+      body: JSON.stringify({ message }),
+    });
+    if (!res.ok) throw new Error(await res.text());
+    return res.json();
+  },
+
+  async getMyAccessRequests() {
+    const res = await fetchWithAuth("/auth/my-requests");
+    if (!res.ok) throw new Error(await res.text());
+    return res.json() as Promise<{ requests: MyAccessRequestRecord[] }>;
+  },
+
+  // ── Sessions ──
+
+  async getSessions() {
+    const res = await fetchWithAuth("/auth/sessions");
+    if (!res.ok) throw new Error(await res.text());
+    return res.json() as Promise<{ sessions: SessionRecord[] }>;
+  },
+
+  async revokeSession(sessionId: string) {
+    const res = await fetchWithAuth(`/auth/sessions/${sessionId}`, { method: "DELETE" });
+    if (!res.ok) throw new Error(await res.text());
+    return res.json();
+  },
+
+  // ── Audit ──
+
+  async getAuditLogs(params?: { page?: number; limit?: number; action?: string; userId?: string; from?: string; to?: string }) {
+    const qs = new URLSearchParams();
+    if (params?.page) qs.set("page", String(params.page));
+    if (params?.limit) qs.set("limit", String(params.limit));
+    if (params?.action) qs.set("action", params.action);
+    if (params?.userId) qs.set("userId", params.userId);
+    if (params?.from) qs.set("from", params.from);
+    if (params?.to) qs.set("to", params.to);
+    const res = await fetchWithAuth(`/audit?${qs.toString()}`);
+    if (!res.ok) throw new Error(await res.text());
+    return res.json() as Promise<AuditLogResponse>;
+  },
+
+  async exportAuditLogs(params?: { from?: string; to?: string }) {
+    const qs = new URLSearchParams();
+    if (params?.from) qs.set("from", params.from);
+    if (params?.to) qs.set("to", params.to);
+    const res = await fetchWithAuth(`/audit/export?${qs.toString()}`);
+    if (!res.ok) throw new Error(await res.text());
+    return res.blob();
+  },
+
+  // ── Trash ──
+
+  async getTrash() {
+    const res = await fetchWithAuth("/files/trash");
+    if (!res.ok) throw new Error(await res.text());
+    return res.json() as Promise<{ files: FileRecord[] }>;
+  },
+
+  async restoreFile(fileId: string) {
+    const res = await fetchWithAuth(`/files/${fileId}/restore`, { method: "POST" });
+    if (!res.ok) throw new Error(await res.text());
+    return res.json();
+  },
+
+  async permanentDeleteFile(fileId: string) {
+    const res = await fetchWithAuth(`/files/${fileId}/permanent`, { method: "DELETE" });
+    if (!res.ok) throw new Error(await res.text());
+  },
+
+  // ── Storage ──
+
+  async getStorageInfo() {
+    const res = await fetchWithAuth("/org/storage");
+    if (!res.ok) throw new Error(await res.text());
+    return res.json() as Promise<{ used: number; quota: number }>;
+  },
+
+  // ── Email verification ──
+
+  async resendVerification() {
+    const res = await fetchWithAuth("/auth/resend-verification", { method: "POST" });
+    if (!res.ok) throw new Error(await res.text());
+    return res.json();
+  },
+
+  // ── Data export / GDPR ──
+
+  async exportUserData() {
+    const res = await fetchWithAuth("/auth/export-data");
+    if (!res.ok) throw new Error(await res.text());
+    return res.json();
+  },
+
+  async deleteAccount(password: string) {
+    const res = await fetchWithAuth("/auth/delete-account", {
+      method: "DELETE",
+      body: JSON.stringify({ password }),
+    });
+    if (!res.ok) throw new Error(await res.text());
+    return res.json();
+  },
 };
 }
 
@@ -318,6 +466,7 @@ export interface OrgDetails {
   createdAt: string;
   memberCount: number;
   totalStorage: number;
+  storageQuota: number;
 }
 
 export interface OrgMemberRecord {
@@ -326,4 +475,60 @@ export interface OrgMemberRecord {
   email: string;
   role: string;
   createdAt: string;
+}
+
+export interface InviteRecord {
+  id: string;
+  email: string;
+  role: string;
+  invitedBy: string;
+  expiresAt: string;
+  createdAt: string;
+}
+
+export interface AccessRequestRecord {
+  id: string;
+  userId: string;
+  email: string;
+  message: string | null;
+  status: string;
+  createdAt: string;
+}
+
+export interface MyAccessRequestRecord {
+  id: string;
+  orgId: string;
+  orgName: string;
+  message: string | null;
+  status: string;
+  createdAt: string;
+}
+
+export interface SessionRecord {
+  id: string;
+  ipAddress: string | null;
+  userAgent: string | null;
+  createdAt: string;
+}
+
+export interface AuditLogEntry {
+  id: string;
+  action: string;
+  resource: string;
+  resourceId: string | null;
+  userId: string | null;
+  userEmail: string | null;
+  metadata: Record<string, unknown> | null;
+  ipAddress: string | null;
+  createdAt: string;
+}
+
+export interface AuditLogResponse {
+  logs: AuditLogEntry[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
 }

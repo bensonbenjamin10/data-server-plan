@@ -1,9 +1,11 @@
 import { Router } from "express";
 import { z } from "zod";
 import { getPresignedGetUrl, deleteObject } from "../services/r2.js";
+import { logger } from "../lib/logger.js";
 import { jwtMiddlewareWithDevBypass, requireAuthWithDevBypass } from "../middleware/auth.js";
 import { requireDownload, requireUpload } from "../middleware/rbac.js";
 import { prisma } from "../db/index.js";
+import { logAuditEvent } from "../services/audit.js";
 
 export const filesRoutes = Router();
 
@@ -27,6 +29,10 @@ const updateFileSchema = z.object({
   folderId: z.string().nullable().optional(),
 });
 
+function getAuth(req: import("express").Request) {
+  return (req as any).auth as { userId: string; orgId: string; orgRole: string } | null;
+}
+
 function getOrgId(req: import("express").Request): string | null {
   return (req as any).auth?.orgId ?? null;
 }
@@ -46,6 +52,7 @@ filesRoutes.get("/", requireDownload, async (req, res) => {
       where: {
         orgId,
         folderId: folderId || null,
+        deletedAt: null,
       },
       include: {
         folder: true,
@@ -55,7 +62,7 @@ filesRoutes.get("/", requireDownload, async (req, res) => {
     });
     res.json({ files });
   } catch (err) {
-    console.error(err);
+    logger.error({ err }, "Failed to list files");
     res.status(500).json({ error: "Failed to list files" });
   }
 });
@@ -73,13 +80,15 @@ filesRoutes.get("/dashboard-stats", requireDownload, async (req, res) => {
     const sixMonthsAgo = new Date();
     sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
 
+    const activeFilter = { orgId, deletedAt: null };
+
     const [fileCount, folderCount, sizeResult, recentUploadsCount, allFiles] = await Promise.all([
-      prisma.file.count({ where: { orgId } }),
+      prisma.file.count({ where: activeFilter }),
       prisma.folder.count({ where: { orgId } }),
-      prisma.file.aggregate({ where: { orgId }, _sum: { size: true } }),
-      prisma.file.count({ where: { orgId, createdAt: { gte: sevenDaysAgo } } }),
+      prisma.file.aggregate({ where: activeFilter, _sum: { size: true } }),
+      prisma.file.count({ where: { ...activeFilter, createdAt: { gte: sevenDaysAgo } } }),
       prisma.file.findMany({
-        where: { orgId },
+        where: activeFilter,
         select: { mimeType: true, size: true, createdAt: true },
       }),
     ]);
@@ -119,7 +128,7 @@ filesRoutes.get("/dashboard-stats", requireDownload, async (req, res) => {
       storageTimeline,
     });
   } catch (err) {
-    console.error(err);
+    logger.error({ err }, "Failed to get dashboard stats");
     res.status(500).json({ error: "Failed to get dashboard stats" });
   }
 });
@@ -133,7 +142,7 @@ filesRoutes.get("/storage-breakdown", requireDownload, async (req, res) => {
     }
 
     const allFiles = await prisma.file.findMany({
-      where: { orgId },
+      where: { orgId, deletedAt: null },
       select: { id: true, name: true, mimeType: true, size: true, createdAt: true },
       orderBy: { size: "desc" },
     });
@@ -162,7 +171,7 @@ filesRoutes.get("/storage-breakdown", requireDownload, async (req, res) => {
 
     res.json({ byType, largestFiles, totalSize, fileCount: allFiles.length });
   } catch (err) {
-    console.error(err);
+    logger.error({ err }, "Failed to get storage breakdown");
     res.status(500).json({ error: "Failed to get storage breakdown" });
   }
 });
@@ -175,16 +184,13 @@ filesRoutes.get("/stats", requireDownload, async (req, res) => {
       return;
     }
     const [fileCount, sizeResult] = await Promise.all([
-      prisma.file.count({ where: { orgId } }),
-      prisma.file.aggregate({
-        where: { orgId },
-        _sum: { size: true },
-      }),
+      prisma.file.count({ where: { orgId, deletedAt: null } }),
+      prisma.file.aggregate({ where: { orgId, deletedAt: null }, _sum: { size: true } }),
     ]);
     const totalSize = sizeResult._sum.size ?? 0;
     res.json({ fileCount, totalSize });
   } catch (err) {
-    console.error(err);
+    logger.error({ err }, "Failed to get stats");
     res.status(500).json({ error: "Failed to get stats" });
   }
 });
@@ -198,106 +204,241 @@ filesRoutes.get("/recent", requireDownload, async (req, res) => {
     }
     const limit = Math.min(parseInt((req.query.limit as string) || "10", 10) || 10, 50);
     const files = await prisma.file.findMany({
-      where: { orgId },
+      where: { orgId, deletedAt: null },
       include: { folder: { select: { name: true, id: true } } },
       orderBy: { updatedAt: "desc" },
       take: limit,
     });
     res.json({ files });
   } catch (err) {
-    console.error(err);
+    logger.error({ err }, "Failed to list recent files");
     res.status(500).json({ error: "Failed to list recent files" });
   }
 });
 
-filesRoutes.get("/:id/download", requireDownload, async (req, res) => {
+// ── Trash ──
+
+filesRoutes.get("/trash", requireUpload, async (req, res) => {
   try {
     const orgId = getOrgId(req);
     if (!orgId) {
       res.status(403).json({ error: "Organization context required" });
       return;
     }
-    const { id } = req.params;
-    const file = await prisma.file.findFirst({
-      where: { id, orgId },
+    const files = await prisma.file.findMany({
+      where: { orgId, deletedAt: { not: null } },
+      include: { uploadedBy: { select: { email: true } } },
+      orderBy: { deletedAt: "desc" },
     });
+    res.json({ files });
+  } catch (err) {
+    logger.error({ err }, "Failed to list trash");
+    res.status(500).json({ error: "Failed to list trash" });
+  }
+});
+
+filesRoutes.post("/:id/restore", requireUpload, async (req, res) => {
+  try {
+    const orgId = getOrgId(req);
+    const auth = getAuth(req);
+    if (!orgId) {
+      res.status(403).json({ error: "Organization context required" });
+      return;
+    }
+    const file = await prisma.file.findFirst({ where: { id: req.params.id, orgId, deletedAt: { not: null } } });
+    if (!file) {
+      res.status(404).json({ error: "File not found in trash" });
+      return;
+    }
+    await prisma.file.update({ where: { id: file.id }, data: { deletedAt: null, deletedById: null } });
+    logAuditEvent({ orgId, userId: auth?.userId, action: "file.restore", resource: "file", resourceId: file.id, metadata: { name: file.name }, req });
+    res.json({ message: "File restored" });
+  } catch (err) {
+    logger.error({ err }, "Failed to restore file");
+    res.status(500).json({ error: "Failed to restore file" });
+  }
+});
+
+filesRoutes.delete("/:id/permanent", requireUpload, async (req, res) => {
+  try {
+    const auth = getAuth(req);
+    const orgId = getOrgId(req);
+    if (!orgId) {
+      res.status(403).json({ error: "Organization context required" });
+      return;
+    }
+    if (auth?.orgRole !== "admin") {
+      res.status(403).json({ error: "Admin role required for permanent deletion" });
+      return;
+    }
+    const file = await prisma.file.findFirst({ where: { id: req.params.id, orgId } });
+    if (!file) {
+      res.status(404).json({ error: "File not found" });
+      return;
+    }
+    await deleteObject(file.r2Key);
+    await prisma.file.delete({ where: { id: file.id } });
+    logAuditEvent({ orgId, userId: auth.userId, action: "file.permanent_delete", resource: "file", resourceId: file.id, metadata: { name: file.name, size: file.size }, req });
+    res.status(204).send();
+  } catch (err) {
+    logger.error({ err }, "Failed to permanently delete file");
+    res.status(500).json({ error: "Failed to permanently delete file" });
+  }
+});
+
+// ── Download ──
+
+filesRoutes.get("/:id/download", requireDownload, async (req, res) => {
+  try {
+    const orgId = getOrgId(req);
+    const auth = getAuth(req);
+    if (!orgId) {
+      res.status(403).json({ error: "Organization context required" });
+      return;
+    }
+    const { id } = req.params;
+    const file = await prisma.file.findFirst({ where: { id, orgId, deletedAt: null } });
     if (!file) {
       res.status(404).json({ error: "File not found" });
       return;
     }
     const url = await getPresignedGetUrl(file.r2Key);
+    logAuditEvent({ orgId, userId: auth?.userId, action: "file.download", resource: "file", resourceId: file.id, metadata: { name: file.name }, req });
     res.json({ url, name: file.name });
   } catch (err) {
-    console.error(err);
+    logger.error({ err }, "Failed to generate download URL");
     res.status(500).json({ error: "Failed to generate download URL" });
   }
 });
 
+// ── Update ──
+
 filesRoutes.patch("/:id", requireUpload, async (req, res) => {
   try {
     const orgId = getOrgId(req);
+    const auth = getAuth(req);
     if (!orgId) {
       res.status(403).json({ error: "Organization context required" });
       return;
     }
     const { id } = req.params;
     const body = updateFileSchema.parse(req.body);
-    const file = await prisma.file.findFirst({
-      where: { id, orgId },
-    });
+    const file = await prisma.file.findFirst({ where: { id, orgId, deletedAt: null } });
     if (!file) {
       res.status(404).json({ error: "File not found" });
       return;
     }
     const data: { name?: string; folderId?: string | null } = {};
-    if (body.name !== undefined) data.name = body.name;
+    const auditMeta: Record<string, unknown> = {};
+
+    if (body.name !== undefined) {
+      auditMeta.oldName = file.name;
+      auditMeta.newName = body.name;
+      data.name = body.name;
+    }
     if (body.folderId !== undefined) {
       if (body.folderId) {
-        const folder = await prisma.folder.findFirst({
-          where: { id: body.folderId, orgId },
-        });
+        const folder = await prisma.folder.findFirst({ where: { id: body.folderId, orgId } });
         if (!folder) {
           res.status(404).json({ error: "Folder not found" });
           return;
         }
       }
+      auditMeta.oldFolderId = file.folderId;
+      auditMeta.newFolderId = body.folderId;
       data.folderId = body.folderId;
     }
-    const updated = await prisma.file.update({
-      where: { id },
-      data,
-    });
+    const updated = await prisma.file.update({ where: { id }, data });
+    const action = body.folderId !== undefined ? "file.move" : "file.rename";
+    logAuditEvent({ orgId, userId: auth?.userId, action, resource: "file", resourceId: file.id, metadata: auditMeta, req });
     res.json(updated);
   } catch (err) {
     if (err instanceof z.ZodError) {
       res.status(400).json({ error: err.errors });
       return;
     }
-    console.error(err);
+    logger.error({ err }, "Failed to update file");
     res.status(500).json({ error: "Failed to update file" });
   }
 });
 
+// ── Soft Delete ──
+
 filesRoutes.delete("/:id", requireUpload, async (req, res) => {
+  try {
+    const orgId = getOrgId(req);
+    const auth = getAuth(req);
+    if (!orgId) {
+      res.status(403).json({ error: "Organization context required" });
+      return;
+    }
+    const { id } = req.params;
+    const file = await prisma.file.findFirst({ where: { id, orgId, deletedAt: null } });
+    if (!file) {
+      res.status(404).json({ error: "File not found" });
+      return;
+    }
+    await prisma.file.update({
+      where: { id },
+      data: { deletedAt: new Date(), deletedById: auth?.userId || null },
+    });
+    logAuditEvent({ orgId, userId: auth?.userId, action: "file.delete", resource: "file", resourceId: file.id, metadata: { name: file.name, size: file.size }, req });
+    res.status(204).send();
+  } catch (err) {
+    logger.error({ err }, "Failed to delete file");
+    res.status(500).json({ error: "Failed to delete file" });
+  }
+});
+
+// ── Versions ──
+
+filesRoutes.get("/:id/versions", requireDownload, async (req, res) => {
   try {
     const orgId = getOrgId(req);
     if (!orgId) {
       res.status(403).json({ error: "Organization context required" });
       return;
     }
-    const { id } = req.params;
-    const file = await prisma.file.findFirst({
-      where: { id, orgId },
-    });
+    const file = await prisma.file.findFirst({ where: { id: req.params.id, orgId } });
     if (!file) {
       res.status(404).json({ error: "File not found" });
       return;
     }
-    await deleteObject(file.r2Key);
-    await prisma.file.delete({ where: { id } });
-    res.status(204).send();
+    const versions = await prisma.fileVersion.findMany({
+      where: { fileId: file.id },
+      orderBy: { version: "desc" },
+      include: { uploadedBy: { select: { email: true } } },
+    });
+    res.json({ versions });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Failed to delete file" });
+    logger.error({ err }, "Failed to list versions");
+    res.status(500).json({ error: "Failed to list versions" });
+  }
+});
+
+filesRoutes.get("/:id/versions/:versionId/download", requireDownload, async (req, res) => {
+  try {
+    const orgId = getOrgId(req);
+    if (!orgId) {
+      res.status(403).json({ error: "Organization context required" });
+      return;
+    }
+    const file = await prisma.file.findFirst({ where: { id: req.params.id, orgId } });
+    if (!file) {
+      res.status(404).json({ error: "File not found" });
+      return;
+    }
+    const version = await prisma.fileVersion.findFirst({
+      where: { id: req.params.versionId, fileId: file.id },
+    });
+    if (!version) {
+      res.status(404).json({ error: "Version not found" });
+      return;
+    }
+    const url = await getPresignedGetUrl(version.r2Key);
+    res.json({ url });
+  } catch (err) {
+    logger.error({ err }, "Failed to get version download URL");
+    res.status(500).json({ error: "Failed to get version download URL" });
   }
 });

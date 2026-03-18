@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { z } from "zod";
+import { logger } from "../lib/logger.js";
 import {
   getPresignedPutUrl,
   createMultipartUpload,
@@ -11,6 +12,7 @@ import {
 import { jwtMiddlewareWithDevBypass, requireAuthWithDevBypass } from "../middleware/auth.js";
 import { requireUpload } from "../middleware/rbac.js";
 import { prisma } from "../db/index.js";
+import { logAuditEvent } from "../services/audit.js";
 
 export const uploadRoutes = Router();
 
@@ -65,6 +67,14 @@ function getUserId(req: import("express").Request): string | null {
   return (req as any).auth?.userId ?? null;
 }
 
+async function checkStorageQuota(orgId: string, additionalBytes: number): Promise<{ allowed: boolean; used: number; quota: number }> {
+  const org = await prisma.organization.findUnique({ where: { id: orgId }, select: { storageQuota: true } });
+  const quota = Number(org?.storageQuota ?? 5368709120);
+  const sizeResult = await prisma.file.aggregate({ where: { orgId, deletedAt: null }, _sum: { size: true } });
+  const used = sizeResult._sum.size ?? 0;
+  return { allowed: used + additionalBytes <= quota, used, quota };
+}
+
 uploadRoutes.use(jwtMiddlewareWithDevBypass());
 uploadRoutes.use(requireAuthWithDevBypass());
 uploadRoutes.use(requireUpload);
@@ -84,7 +94,7 @@ uploadRoutes.post("/presign", async (req, res) => {
       res.status(400).json({ error: err.errors });
       return;
     }
-    console.error(err);
+    logger.error({ err }, "Failed to generate presigned URL");
     res.status(500).json({ error: "Failed to generate presigned URL" });
   }
 });
@@ -98,6 +108,13 @@ uploadRoutes.post("/complete", async (req, res) => {
       return;
     }
     const body = singleCompleteSchema.parse(req.body);
+
+    const { allowed, used, quota } = await checkStorageQuota(orgId, body.size);
+    if (!allowed) {
+      res.status(413).json({ error: "Storage quota exceeded", used, quota });
+      return;
+    }
+
     const file = await prisma.file.create({
       data: {
         orgId,
@@ -109,13 +126,14 @@ uploadRoutes.post("/complete", async (req, res) => {
         uploadedById: userId || null,
       },
     });
+    logAuditEvent({ orgId, userId, action: "file.upload", resource: "file", resourceId: file.id, metadata: { name: file.name, size: file.size, mimeType: file.mimeType }, req });
     res.status(201).json(file);
   } catch (err) {
     if (err instanceof z.ZodError) {
       res.status(400).json({ error: err.errors });
       return;
     }
-    console.error(err);
+    logger.error({ err }, "Failed to register file");
     res.status(500).json({ error: "Failed to register file" });
   }
 });
@@ -141,7 +159,7 @@ uploadRoutes.post("/multipart/create", async (req, res) => {
       res.status(400).json({ error: err.errors });
       return;
     }
-    console.error(err);
+    logger.error({ err }, "Failed to create multipart upload");
     res.status(500).json({ error: "Failed to create multipart upload" });
   }
 });
@@ -149,18 +167,14 @@ uploadRoutes.post("/multipart/create", async (req, res) => {
 uploadRoutes.post("/multipart/presign-part", async (req, res) => {
   try {
     const body = presignPartSchema.parse(req.body);
-    const url = await getPresignedUploadPartUrl(
-      body.key,
-      body.uploadId,
-      body.partNumber
-    );
+    const url = await getPresignedUploadPartUrl(body.key, body.uploadId, body.partNumber);
     res.json({ url, partNumber: body.partNumber });
   } catch (err) {
     if (err instanceof z.ZodError) {
       res.status(400).json({ error: err.errors });
       return;
     }
-    console.error(err);
+    logger.error({ err }, "Failed to generate presigned part URL");
     res.status(500).json({ error: "Failed to generate presigned URL" });
   }
 });
@@ -176,7 +190,7 @@ uploadRoutes.get("/multipart/parts", async (req, res) => {
     const parts = await listParts(key, uploadId);
     res.json({ parts });
   } catch (err) {
-    console.error(err);
+    logger.error({ err }, "Failed to list parts");
     res.status(500).json({ error: "Failed to list parts" });
   }
 });
@@ -190,6 +204,13 @@ uploadRoutes.post("/multipart/complete", async (req, res) => {
       return;
     }
     const body = completeSchema.parse(req.body);
+
+    const { allowed, used, quota } = await checkStorageQuota(orgId, body.size);
+    if (!allowed) {
+      res.status(413).json({ error: "Storage quota exceeded", used, quota });
+      return;
+    }
+
     await completeMultipartUpload(body.key, body.uploadId, body.parts);
     const file = await prisma.file.create({
       data: {
@@ -203,13 +224,14 @@ uploadRoutes.post("/multipart/complete", async (req, res) => {
       },
     });
     await prisma.multipartUpload.deleteMany({ where: { uploadId: body.uploadId } });
+    logAuditEvent({ orgId, userId, action: "file.upload", resource: "file", resourceId: file.id, metadata: { name: file.name, size: file.size, mimeType: file.mimeType, multipart: true }, req });
     res.status(201).json(file);
   } catch (err) {
     if (err instanceof z.ZodError) {
       res.status(400).json({ error: err.errors });
       return;
     }
-    console.error(err);
+    logger.error({ err }, "Failed to complete multipart upload");
     res.status(500).json({ error: "Failed to complete multipart upload" });
   }
 });
@@ -225,7 +247,7 @@ uploadRoutes.post("/multipart/abort", async (req, res) => {
       res.status(400).json({ error: err.errors });
       return;
     }
-    console.error(err);
+    logger.error({ err }, "Failed to abort multipart upload");
     res.status(500).json({ error: "Failed to abort multipart upload" });
   }
 });
