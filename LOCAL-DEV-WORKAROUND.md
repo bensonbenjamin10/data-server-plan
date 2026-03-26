@@ -1,6 +1,6 @@
 # Local Dev Workaround for ERR_NAME_NOT_RESOLVED
 
-If your network DNS cannot resolve `backend-production-611d.up.railway.app`, run the app locally. The frontend will proxy API requests to your local backend, which connects to Railway's Postgres and R2.
+If your network DNS cannot resolve `data-joe-server.finjoe.app`, run the app locally. The frontend will proxy API requests to your local backend, which connects to Railway's Postgres and R2.
 
 ## Steps
 

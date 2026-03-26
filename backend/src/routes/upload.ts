@@ -96,7 +96,7 @@ const UPLOAD_START_PATHS = ["/presign", "/multipart/create"];
 
 const uploadStartLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 20,
+  max: 200,
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: "Too many uploads started. Please try again later." },

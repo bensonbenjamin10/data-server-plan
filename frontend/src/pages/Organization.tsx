@@ -33,12 +33,7 @@ import {
   XCircle,
 } from "lucide-react";
 
-function formatSize(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-  return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)} GB`;
-}
+import { formatBytes } from "@/lib/formatBytes";
 
 function formatAction(action: string): string {
   return action.replace(/[._]/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
@@ -252,7 +247,7 @@ export function Organization() {
               ) : orgData ? (
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <StatCard icon={Users} label="Members" value={orgData.memberCount} index={0} />
-                  <StatCard icon={HardDrive} label="Total Storage" value={formatSize(orgData.totalStorage)} index={1} />
+                  <StatCard icon={HardDrive} label="Total Storage" value={formatBytes(orgData.totalStorage)} index={1} />
                   <StatCard icon={Building2} label="Organization ID" value={orgData.id.slice(0, 8) + "..."} index={2} />
                 </div>
               ) : null}
@@ -263,7 +258,7 @@ export function Organization() {
                   <ProgressBar
                     value={orgData.totalStorage}
                     max={storageQuota}
-                    label={`${formatSize(orgData.totalStorage)} of ${formatSize(storageQuota)} used`}
+                    label={`${formatBytes(orgData.totalStorage)} of ${formatBytes(storageQuota)} used`}
                     showPercentage
                     size="lg"
                   />

@@ -4,7 +4,10 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import { useApi } from "@/lib/api-context";
 import { usePresignedDownload } from "@/hooks/usePresignedDownload";
-import { useResumableUpload } from "@/hooks/useResumableUpload";
+import { useUploadQueue } from "@/hooks/useUploadQueue";
+import type { FileWithRelativePath } from "@/components/upload/UploadZone";
+import { ensureFolderTree, getFolderIdForRelativeFile } from "@/lib/ensureFolderTree";
+import { formatBytes } from "@/lib/formatBytes";
 import { useToast } from "@/components/ui/Toast";
 import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
 import { Breadcrumbs } from "@/components/layout/Breadcrumbs";
@@ -19,12 +22,6 @@ import { ContextMenu } from "@/components/ui/ContextMenu";
 import { FilePreviewModal } from "@/components/files/FilePreviewModal";
 import type { FileRecord } from "@/lib/api";
 
-function formatSize(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-  return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)} GB`;
-}
 
 function formatVersionDate(iso: string): string {
   return new Date(iso).toLocaleDateString(undefined, {
@@ -101,14 +98,6 @@ export function Files() {
     enabled: !!versionHistoryFile,
   });
 
-  const {
-    upload,
-    pause,
-    resume,
-    cancel,
-    state: uploadState,
-  } = useResumableUpload();
-
   const files = filesData?.files ?? [];
   const folders = foldersData?.folders ?? [];
 
@@ -133,6 +122,17 @@ export function Files() {
     queryClient.invalidateQueries({ queryKey: ["files"] });
     queryClient.invalidateQueries({ queryKey: ["folders"] });
   }, [queryClient]);
+
+  const {
+    items: uploadItems,
+    addFiles,
+    retryItem,
+    cancelCurrent,
+    clearCompleted,
+    pause,
+    resume,
+    uploadHookState,
+  } = useUploadQueue({ onUploadComplete: invalidate });
 
   const orderedIds = [...sortedFolders.map((f) => f.id), ...sortedFiles.map((f) => f.id)];
 
@@ -212,21 +212,28 @@ export function Files() {
   }, [api, selectedFiles, selectedFolders, invalidate, showToast]);
 
   const handleFilesSelected = useCallback(
-    async (fileList: File[]) => {
-      for (const file of fileList) {
-        try {
-          await upload(file, {
-            folderId: folderId || null,
-            onProgress: () => {},
-          });
-          invalidate();
-          showToast(`${file.name} uploaded successfully`, "success");
-        } catch {
-          showToast(`Failed to upload ${file.name}`, "error");
-        }
+    async (fileList: FileWithRelativePath[]) => {
+      if (fileList.length === 0) return;
+      try {
+        const paths = fileList.map((x) => x.relativePath);
+        const pathToId = await ensureFolderTree(
+          { createFolder: api.createFolder.bind(api), listFolders: api.listFolders.bind(api) },
+          paths,
+          folderId || null
+        );
+        const inputs = fileList.map((x) => ({
+          file: x.file,
+          relativePath: x.relativePath,
+          folderId: getFolderIdForRelativeFile(x.relativePath, pathToId, folderId || null),
+        }));
+        addFiles(inputs);
+        invalidate();
+        showToast(`Queued ${fileList.length} file(s) for upload`, "success");
+      } catch {
+        showToast("Failed to prepare upload (folders or queue)", "error");
       }
     },
-    [upload, folderId, invalidate, showToast]
+    [api, folderId, addFiles, invalidate, showToast]
   );
 
   const handleDownload = useCallback(
@@ -497,7 +504,14 @@ export function Files() {
             className="hidden"
             onChange={(e) => {
               const files = e.target.files ? Array.from(e.target.files) : [];
-              if (files.length) handleFilesSelected(files);
+              if (files.length) {
+                void handleFilesSelected(
+                  files.map((f) => ({
+                    file: f,
+                    relativePath: f.name,
+                  }))
+                );
+              }
               e.target.value = "";
             }}
           />
@@ -507,15 +521,16 @@ export function Files() {
           </p>
         </div>
 
-        {uploadState.status !== "idle" && uploadState.fileName && (
+        {uploadItems.length > 0 && (
           <UploadProgress
-            fileName={uploadState.fileName}
-            status={uploadState.status}
-            progress={uploadState.progress}
-            error={uploadState.error}
+            items={uploadItems}
+            hookStatus={uploadHookState.status}
+            hookFileName={uploadHookState.fileName}
             onPause={pause}
             onResume={resume}
-            onCancel={cancel}
+            onCancel={cancelCurrent}
+            onRetry={retryItem}
+            onClearCompleted={clearCompleted}
             canPauseResume={true}
           />
         )}
@@ -875,7 +890,7 @@ export function Files() {
                         )}
                       </td>
                       <td className="py-2 pr-4">{formatVersionDate(v.createdAt)}</td>
-                      <td className="py-2 pr-4">{formatSize(v.size)}</td>
+                      <td className="py-2 pr-4">{formatBytes(v.size)}</td>
                       <td className="py-2 pr-4">{v.uploadedBy?.email ?? "—"}</td>
                       <td className="py-2">
                         <button

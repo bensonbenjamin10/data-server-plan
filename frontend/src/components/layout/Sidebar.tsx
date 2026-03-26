@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useApi } from "@/lib/api-context";
 import { FolderTree } from "./FolderTree";
 import { ProgressBar } from "@/components/ui/ProgressBar";
+import { formatBytes } from "@/lib/formatBytes";
 import {
   LayoutDashboard,
   FolderOpen,
@@ -35,13 +36,6 @@ const accountNav: NavItem[] = [
   { to: "/profile", label: "Profile", icon: User },
   { to: "/settings", label: "Settings", icon: Settings },
 ];
-
-function formatSize(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-  return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)} GB`;
-}
 
 export function Sidebar() {
   const location = useLocation();
@@ -146,7 +140,7 @@ export function Sidebar() {
             colorMode="accent"
           />
           <p className="text-[11px] text-text-muted mt-1.5">
-            {formatSize(storageInfo.used)} of {formatSize(storageInfo.quota)}
+            {formatBytes(storageInfo.used)} of {formatBytes(storageInfo.quota)}
           </p>
         </div>
       )}

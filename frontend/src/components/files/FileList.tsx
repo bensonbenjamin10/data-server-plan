@@ -1,6 +1,7 @@
 import { useRef, useEffect } from "react";
 import { motion } from "framer-motion";
 import type { FileRecord } from "@/lib/api";
+import { formatBytes } from "@/lib/formatBytes";
 import { getFileIcon } from "@/lib/fileIcons";
 
 interface FileListProps {
@@ -20,12 +21,6 @@ interface FileListProps {
   onDrop?: (item: { id: string; isFolder: boolean }, targetFolderId: string | null) => void;
   currentFolderId?: string | null;
   onContextMenu?: (e: React.MouseEvent, item: { id: string; name: string; isFolder: boolean }, file?: FileRecord) => void;
-}
-
-function formatSize(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 function formatDate(iso: string): string {
@@ -80,13 +75,17 @@ export function FileList({
     el.indeterminate = selectedIds.size > 0 && !allSelected;
   }, [selectedIds.size, allSelected]);
 
+  const gridCols = "grid-cols-[32px_1fr_100px_120px_minmax(260px,auto)]";
+
   return (
     <div
       className="border border-border rounded-lg overflow-hidden bg-surface"
       onDragOver={onDrop ? handleDragOver : undefined}
       onDrop={onDrop ? (e) => handleDrop(e, currentFolderId) : undefined}
     >
-      <div className="grid grid-cols-[32px_1fr_100px_120px_100px] gap-4 px-4 py-3 bg-surface-hover text-sm font-medium text-text-muted border-b border-border items-center">
+      <div className="overflow-x-auto min-w-0">
+        <div className="min-w-[640px]">
+          <div className={`grid ${gridCols} gap-4 px-4 py-3 bg-surface-hover text-sm font-medium text-text-muted border-b border-border items-center`}>
         {onSelectAll && (
           <input
             ref={selectAllRef}
@@ -101,18 +100,18 @@ export function FileList({
         <span>Size</span>
         <span>Modified</span>
         <span></span>
-      </div>
-      {folders.map((folder) => (
-        <motion.div
-          key={folder.id}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          draggable={!!onDrop}
-          onDragStart={onDrop ? (e) => handleDragStart(e as unknown as React.DragEvent, folder.id, true) : undefined}
-          onDragOver={onDrop ? handleDragOver : undefined}
-          onDrop={onDrop ? (e) => handleDrop(e as unknown as React.DragEvent, folder.id) : undefined}
-          data-file-explorer-row={true}
-          className={`grid grid-cols-[32px_1fr_100px_120px_100px] gap-4 px-4 py-3 items-center cursor-pointer hover:bg-surface-hover transition-colors group ${
+          </div>
+          {folders.map((folder) => (
+            <motion.div
+              key={folder.id}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              draggable={!!onDrop}
+              onDragStart={onDrop ? (e) => handleDragStart(e as unknown as React.DragEvent, folder.id, true) : undefined}
+              onDragOver={onDrop ? handleDragOver : undefined}
+              onDrop={onDrop ? (e) => handleDrop(e as unknown as React.DragEvent, folder.id) : undefined}
+              data-file-explorer-row={true}
+              className={`grid ${gridCols} gap-4 px-4 py-3 items-center cursor-pointer hover:bg-surface-hover transition-colors group ${
             selectedIds.has(folder.id) ? "bg-accent/10" : ""
           }`}
           onClick={(e) => onSelect(folder.id, true, { shift: e.shiftKey, ctrl: e.ctrlKey || e.metaKey })}
@@ -155,19 +154,19 @@ export function FileList({
               </button>
             )}
           </div>
-        </motion.div>
-      ))}
-      {files.map((file) => (
-        <motion.div
-          key={file.id}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          draggable={!!onDrop}
-          onDragStart={onDrop ? (e) => handleDragStart(e as unknown as React.DragEvent, file.id, false) : undefined}
-          onDragOver={onDrop ? handleDragOver : undefined}
-          onDrop={onDrop ? (e) => handleDrop(e as unknown as React.DragEvent, file.folderId ?? currentFolderId) : undefined}
-          data-file-explorer-row={true}
-          className={`grid grid-cols-[32px_1fr_100px_120px_100px] gap-4 px-4 py-3 items-center cursor-pointer hover:bg-surface-hover transition-colors group ${
+            </motion.div>
+          ))}
+          {files.map((file) => (
+            <motion.div
+              key={file.id}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              draggable={!!onDrop}
+              onDragStart={onDrop ? (e) => handleDragStart(e as unknown as React.DragEvent, file.id, false) : undefined}
+              onDragOver={onDrop ? handleDragOver : undefined}
+              onDrop={onDrop ? (e) => handleDrop(e as unknown as React.DragEvent, file.folderId ?? currentFolderId) : undefined}
+              data-file-explorer-row={true}
+              className={`grid ${gridCols} gap-4 px-4 py-3 items-center cursor-pointer hover:bg-surface-hover transition-colors group ${
             selectedIds.has(file.id) ? "bg-accent/10" : ""
           }`}
           onClick={(e) => onSelect(file.id, false, { shift: e.shiftKey, ctrl: e.ctrlKey || e.metaKey })}
@@ -183,7 +182,7 @@ export function FileList({
           />
           <span className="font-medium text-text truncate"><span className="text-lg">{getFileIcon(file.name, file.mimeType)}</span> {file.name}</span>
           <span className="text-text-muted text-sm">
-            {formatSize(file.size)}
+            {formatBytes(file.size)}
           </span>
           <span className="text-text-muted text-sm">
             {formatDate(file.createdAt)}
@@ -224,8 +223,10 @@ export function FileList({
               Delete
             </button>
           </div>
-        </motion.div>
-      ))}
+            </motion.div>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }

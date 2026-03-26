@@ -19,13 +19,7 @@ import {
   ArrowRight,
   LogOut,
 } from "lucide-react";
-
-function formatSize(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-  return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)} GB`;
-}
+import { formatBytes } from "@/lib/formatBytes";
 
 const TYPE_DOT_COLORS: Record<string, string> = {
   images: "bg-blue-500",
@@ -158,7 +152,7 @@ export function Settings() {
                     <ProgressBar
                       value={breakdown.totalSize}
                       max={5 * 1024 * 1024 * 1024 * 1024}
-                      label={`${formatSize(breakdown.totalSize)} of 5 TB used`}
+                      label={`${formatBytes(breakdown.totalSize)} of 5 TB used`}
                       showPercentage
                       size="lg"
                     />
@@ -183,7 +177,7 @@ export function Settings() {
                           <div className={`w-2.5 h-2.5 rounded-full shrink-0 ${TYPE_DOT_COLORS[t.category] || TYPE_DOT_COLORS.other}`} />
                           <span className="text-sm font-medium text-text capitalize flex-1">{t.category}</span>
                           <span className="text-sm text-text-muted">{t.count} files</span>
-                          <span className="text-sm font-medium text-text w-20 text-right">{formatSize(t.size)}</span>
+                          <span className="text-sm font-medium text-text w-20 text-right">{formatBytes(t.size)}</span>
                         </div>
                       ))}
                   </div>
@@ -212,7 +206,7 @@ export function Settings() {
                             <Icon size={16} />
                           </div>
                           <span className="text-sm text-text truncate flex-1">{file.name}</span>
-                          <Badge variant="default">{formatSize(file.size)}</Badge>
+                          <Badge variant="default">{formatBytes(file.size)}</Badge>
                         </div>
                       );
                     })}

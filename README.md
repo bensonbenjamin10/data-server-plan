@@ -101,7 +101,7 @@ Both services build from the **project root** (monorepo). Configure each service
 2. **Start command** (choose one):
    - **Option A**: Add variable `RAILPACK_CONFIG_FILE=railpack-frontend.json` (Railpack uses this at build time)
    - **Option B**: In Railway → Service → Settings → Deploy → set **Custom Start Command** to `npm run start -w frontend`
-3. **Other variables**: `VITE_API_URL` - backend API URL (e.g. https://your-backend.up.railway.app/api)
+3. **Other variables**: `VITE_API_URL` - backend API URL (e.g. https://data-joe-server.finjoe.app/api)
 
 > **Important**: Without a different start command, both services run the backend start script and the frontend will crash. Use Option A or B above.
 
