@@ -54,7 +54,13 @@ export function Files() {
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
   const [bulkMoveOpen, setBulkMoveOpen] = useState(false);
   const [createFolderOpen, setCreateFolderOpen] = useState(false);
-  const [previewFile, setPreviewFile] = useState<{ id: string; name: string; mimeType: string | null; url: string } | null>(null);
+  const [previewFile, setPreviewFile] = useState<{
+    id: string;
+    name: string;
+    mimeType: string | null;
+    url: string;
+    size: number;
+  } | null>(null);
   const [versionHistoryFile, setVersionHistoryFile] = useState<FileRecord | null>(null);
   const [contextMenu, setContextMenu] = useState<{
     x: number;
@@ -270,12 +276,15 @@ export function Files() {
         navigate(`/files/${id}`);
       } else if (file) {
         try {
-          const { url } = await api.getDownloadUrl(file.id);
+          const { url } = await api.getDownloadUrl(file.id, {
+            disposition: "inline",
+          });
           setPreviewFile({
             id: file.id,
             name: file.name,
             mimeType: file.mimeType ?? null,
             url,
+            size: file.size,
           });
         } catch {
           showToast("Failed to open preview", "error");
@@ -700,12 +709,16 @@ export function Files() {
                   <button
                     onClick={async () => {
                       try {
-                        const { url } = await api.getDownloadUrl(contextMenu.file!.id);
+                        const { url } = await api.getDownloadUrl(
+                          contextMenu.file!.id,
+                          { disposition: "inline" }
+                        );
                         setPreviewFile({
                           id: contextMenu.file!.id,
                           name: contextMenu.file!.name,
                           mimeType: contextMenu.file!.mimeType ?? null,
                           url,
+                          size: contextMenu.file!.size,
                         });
                       } catch {
                         showToast("Failed to load preview", "error");
@@ -857,6 +870,7 @@ export function Files() {
           url={previewFile?.url ?? null}
           fileName={previewFile?.name ?? ""}
           mimeType={previewFile?.mimeType ?? null}
+          fileSize={previewFile?.size ?? null}
         />
 
         <Modal

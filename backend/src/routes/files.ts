@@ -302,7 +302,8 @@ filesRoutes.get("/:id/download", requireDownload, async (req, res) => {
       res.status(404).json({ error: "File not found" });
       return;
     }
-    const url = await getPresignedGetUrl(file.r2Key);
+    const wantInline = req.query.disposition === "inline";
+    const url = await getPresignedGetUrl(file.r2Key, wantInline ? { inline: true, filename: file.name } : undefined);
     logAuditEvent({ orgId, userId: auth?.userId, action: "file.download", resource: "file", resourceId: file.id, metadata: { name: file.name }, req });
     res.json({ url, name: file.name });
   } catch (err) {
@@ -435,7 +436,8 @@ filesRoutes.get("/:id/versions/:versionId/download", requireDownload, async (req
       res.status(404).json({ error: "Version not found" });
       return;
     }
-    const url = await getPresignedGetUrl(version.r2Key);
+    const wantInline = req.query.disposition === "inline";
+    const url = await getPresignedGetUrl(version.r2Key, wantInline ? { inline: true, filename: file.name } : undefined);
     res.json({ url });
   } catch (err) {
     logger.error({ err }, "Failed to get version download URL");

@@ -74,13 +74,34 @@ export async function getPresignedPutUrl(
   return url;
 }
 
-export async function getPresignedGetUrl(key: string): Promise<string> {
+/** Safe single-line filename for Content-Disposition (ASCII, no quotes). */
+function sanitizeFilenameForContentDisposition(name: string): string {
+  const base = name.replace(/["\r\n\\]/g, "_").trim() || "file";
+  return base.length > 200 ? base.slice(0, 200) : base;
+}
+
+export interface PresignedGetUrlOptions {
+  /** When true, signs with `Content-Disposition: inline` so browsers display PDF/media in-page instead of forcing download. */
+  inline?: boolean;
+  /** Used with `inline` for the `filename=` parameter. */
+  filename?: string;
+}
+
+export async function getPresignedGetUrl(
+  key: string,
+  options?: PresignedGetUrlOptions
+): Promise<string> {
+  const inline = options?.inline === true;
+  const filename = sanitizeFilenameForContentDisposition(options?.filename ?? "file");
   const command = new GetObjectCommand({
     Bucket: bucketName,
     Key: key,
+    ...(inline && {
+      ResponseContentDisposition: `inline; filename="${filename}"`,
+    }),
   });
   const url = await getSignedUrl(s3Client, command, { expiresIn: PRESIGN_EXPIRY });
-  logger.debug({ key }, "R2 presigned GET generated");
+  logger.debug({ key, inline }, "R2 presigned GET generated");
   return url;
 }
 

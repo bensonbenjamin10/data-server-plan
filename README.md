@@ -73,7 +73,8 @@ Set `SKIP_AUTH=1` in backend `.env` and run `npm run db:seed` to create dev org/
 
 1. Create R2 bucket in Cloudflare dashboard
 2. Create API token (R2 Object Read & Write)
-3. Configure CORS on the bucket:
+3. Configure CORS on the bucket. The API returns **presigned GET URLs** for downloads and for **in-browser preview** (images, PDF iframes, `fetch` for text, `<video>` / `<audio>`). The browser loads those URLs **directly against R2**, not through your API, so each allowed frontend origin must be listed here or previews will fail (broken images, empty iframe, or CORS errors in the console).
+
 ```json
 [{
   "AllowedOrigins": ["http://localhost:5173", "https://your-app.railway.app"],
@@ -81,6 +82,8 @@ Set `SKIP_AUTH=1` in backend `.env` and run `npm run db:seed` to create dev org/
   "AllowedHeaders": ["*"]
 }]
 ```
+
+Include every environment where users open the app (local dev, staging, production). `GET` is required for preview and download.
 
 ## Deployment (Railway)
 

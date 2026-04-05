@@ -187,8 +187,10 @@ export function createApi(getToken: () => Promise<string | null>) {
     return res.json() as Promise<{ files: FileRecord[] }>;
   },
 
-  async getDownloadUrl(fileId: string) {
-    const res = await fetchWithAuth(`/files/${fileId}/download`);
+  async getDownloadUrl(fileId: string, opts?: { disposition?: "inline" }) {
+    const qs =
+      opts?.disposition === "inline" ? "?disposition=inline" : "";
+    const res = await fetchWithAuth(`/files/${fileId}/download${qs}`);
     if (!res.ok) throw new Error(await res.text());
     return res.json() as Promise<{ url: string; name: string }>;
   },
@@ -207,8 +209,12 @@ export function createApi(getToken: () => Promise<string | null>) {
     }>;
   },
 
-  async getVersionDownloadUrl(fileId: string, versionId: string) {
-    const res = await fetchWithAuth(`/files/${fileId}/versions/${versionId}/download`);
+  async getVersionDownloadUrl(fileId: string, versionId: string, opts?: { disposition?: "inline" }) {
+    const qs =
+      opts?.disposition === "inline" ? "?disposition=inline" : "";
+    const res = await fetchWithAuth(
+      `/files/${fileId}/versions/${versionId}/download${qs}`
+    );
     if (!res.ok) throw new Error(await res.text());
     return res.json() as Promise<{ url: string }>;
   },
